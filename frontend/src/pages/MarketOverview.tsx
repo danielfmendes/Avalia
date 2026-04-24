@@ -2,31 +2,60 @@ import { useDashboard } from '@/context/DashboardContext';
 import { LisbonMap } from '@/components/LisbonMap';
 import { MetricCards } from '@/components/MetricCards';
 import { PriceChart } from '@/components/PriceChart';
-import { X } from 'lucide-react';
+import { QuartosBreakdown } from '@/components/QuartosBreakdown';
+import { DistrictSummary } from '@/components/DistrictSummary';
+import { ChevronRight, X } from 'lucide-react';
 
 export function MarketOverview() {
-  const { drilldown, resetDrilldown, tipoVenda } = useDashboard();
+  const { drilldown, resetDrilldown, setMunicipio, tipoVenda } = useDashboard();
 
   const locationLabel = drilldown.freguesia
-    ? `${drilldown.freguesia} · ${drilldown.municipio}`
+    ? drilldown.freguesia
     : drilldown.municipio
       ? drilldown.municipio
       : 'Lisboa District';
 
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      {/* Header with breadcrumb */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
             Market Intelligence
           </div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {locationLabel}
-          </h1>
+          <div className="mt-1 flex items-center gap-2">
+            <button
+              onClick={resetDrilldown}
+              className="text-3xl font-semibold tracking-tight text-muted-foreground/60 hover:text-foreground transition-colors"
+              disabled={!drilldown.municipio}
+            >
+              Lisboa
+            </button>
+            {drilldown.municipio && (
+              <>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
+                <button
+                  onClick={() => setMunicipio(drilldown.municipio)}
+                  className="text-3xl font-semibold tracking-tight text-muted-foreground/60 hover:text-foreground transition-colors"
+                  disabled={!drilldown.freguesia}
+                >
+                  {drilldown.municipio}
+                </button>
+              </>
+            )}
+            {drilldown.freguesia && (
+              <>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
+                <span className="text-3xl font-semibold tracking-tight">{drilldown.freguesia}</span>
+              </>
+            )}
+            {!drilldown.municipio && (
+              <span className="text-3xl font-semibold tracking-tight -ml-2">{locationLabel}</span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Live pricing, volume, and year-over-year deltas for the Lisboa metropolitan area
-            {tipoVenda === 'arrendamento' ? ' · rental market' : ' · sales market'}.
+            {tipoVenda === 'compra' ? 'Sales market' : 'Rental market'} ·
+            prices, listing volume, and year-over-year dynamics.
           </p>
         </div>
 
@@ -37,13 +66,16 @@ export function MarketOverview() {
               className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-border transition-colors"
             >
               <X className="h-3 w-3" />
-              Clear filter
+              Back to district
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI row */}
+      {/* District summary strip — always visible, grounds the view */}
+      <DistrictSummary />
+
+      {/* KPI row (4 cards) */}
       <MetricCards />
 
       {/* Chart + Map grid */}
@@ -51,13 +83,15 @@ export function MarketOverview() {
         <div className="xl:col-span-3">
           <PriceChart />
         </div>
-
         <div className="xl:col-span-2">
-          <div className="rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm dark:bg-card/40 h-full">
+          <div className="h-full rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm dark:bg-card/40">
             <LisbonMap />
           </div>
         </div>
       </div>
+
+      {/* Bedroom mix — meaningful at every drill level */}
+      <QuartosBreakdown />
     </div>
   );
 }

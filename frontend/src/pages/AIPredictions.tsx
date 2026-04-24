@@ -76,9 +76,9 @@ function InsightIcon({ type }: { type: Insight['type'] }) {
 }
 
 export function AIPredictions() {
-  const { filteredData, metric, drilldown, allData } = useDashboard();
+  const { filteredData, metric, drilldown, districtData } = useDashboard();
   const isDark = useIsDark();
-  const muniStats = useMemo(() => getMunicipioStats(allData), [allData]);
+  const muniStats = useMemo(() => getMunicipioStats(districtData), [districtData]);
 
   const { historical, forecast, combined, splitMesAno } = useMemo(() => {
     const hist = aggregateByMonth(filteredData, metric);
@@ -132,12 +132,13 @@ export function AIPredictions() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
-            AI Predictions
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            ML-powered 12-month price forecast with confidence bands
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
+            <Sparkles className="h-3 w-3 text-amber-500" />
+            Forecast
+          </div>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">AI Predictions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            12-month price projection with 95% confidence band · linear trend on trailing 18 months.
           </p>
         </div>
         <Badge variant="outline" className="gap-1 text-xs">
