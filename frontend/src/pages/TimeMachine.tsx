@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  AreaChart, Area,
 } from 'recharts';
-import { History, Play, Pause, RotateCcw, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  History, Play, Pause, RotateCcw, TrendingUp, TrendingDown, SkipBack, SkipForward,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useDashboard } from '@/context/DashboardContext';
 import { wavg, minusYear } from '@/lib/dataUtils';
@@ -72,13 +75,11 @@ function snapshotAt(
 function yoyColor(pct: number | null, isDark: boolean): string {
   if (pct === null) return isDark ? '#64748b' : '#94a3b8';
   const capped = Math.max(-25, Math.min(25, pct));
-  const t = (capped + 25) / 50; // 0..1
+  const t = (capped + 25) / 50;
   if (t > 0.5) {
-    // green scale
     const g = Math.round(150 + (t - 0.5) * 200);
     return `rgb(16, ${g}, 129)`;
   }
-  // red scale (low t = more red)
   const r = Math.round(220 - t * 80);
   return `rgb(${r}, 70, 90)`;
 }
@@ -101,19 +102,14 @@ export function TimeMachine() {
   const [playing, setPlaying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Snap index to end when month list changes.
+  // Snap to the newest month on first load / when list length changes.
   useEffect(() => {
-    if (allMonths.length > 0 && index >= allMonths.length) {
-      setIndex(allMonths.length - 1);
-    }
-    if (allMonths.length > 0 && index === 0) {
-      // Default to last month on first render.
+    if (allMonths.length > 0 && (index >= allMonths.length || index === 0)) {
       setIndex(allMonths.length - 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMonths.length]);
 
-  // Playback timer.
   useEffect(() => {
     if (!playing) return;
     timerRef.current = setInterval(() => {
@@ -124,7 +120,7 @@ export function TimeMachine() {
         }
         return i + 1;
       });
-    }, 500);
+    }, 400);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -145,7 +141,6 @@ export function TimeMachine() {
     [snapshot, isDark],
   );
 
-  // Biggest movers vs one year ago.
   const movers = useMemo(() => {
     const withYoy = snapshot.filter(s => s.yoyPct !== null) as Array<MuniSnapshot & { yoyPct: number }>;
     const gainers = [...withYoy].sort((a, b) => b.yoyPct - a.yoyPct).slice(0, 3);
@@ -153,21 +148,57 @@ export function TimeMachine() {
     return { gainers, losers };
   }, [snapshot]);
 
-  const districtAvg = useMemo(() => {
-    if (snapshot.length === 0) return 0;
-    const wSum = snapshot.reduce((s, m) => s + m.avgM2 * m.volume, 0);
-    const vol = snapshot.reduce((s, m) => s + m.volume, 0);
-    return vol > 0 ? wSum / vol : 0;
-  }, [snapshot]);
+  // District-level series across all months — drives the mini trace + high/low tags.
+  const districtSeries = useMemo(() => {
+    const scope = districtData.filter(
+      r => r.tipo_venda === tipoVenda && r.freguesia === 'Grouped at Municipio level',
+    );
+    return allMonths.map(mes_ano => {
+      const rs = scope.filter(r => r.mes_ano === mes_ano);
+      return { mes_ano, value: wavg(rs, 'avg_m2') };
+    });
+  }, [districtData, tipoVenda, allMonths]);
+
+  const districtAvg = districtSeries[index]?.value ?? 0;
+
+  const { allTimeHigh, allTimeLow } = useMemo(() => {
+    if (districtSeries.length === 0) return { allTimeHigh: null, allTimeLow: null };
+    let hi = districtSeries[0], lo = districtSeries[0];
+    for (const p of districtSeries) {
+      if (p.value > hi.value) hi = p;
+      if (p.value < lo.value && p.value > 0) lo = p;
+    }
+    return { allTimeHigh: hi, allTimeLow: lo };
+  }, [districtSeries]);
+
+  const isHigh = allTimeHigh && currentMonth === allTimeHigh.mes_ano;
+  const isLow = allTimeLow && currentMonth === allTimeLow.mes_ano;
 
   const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
   const textColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
 
   const canPlay = allMonths.length > 1;
+  const progressPct = allMonths.length > 1 ? (index / (allMonths.length - 1)) * 100 : 0;
+
+  // Year tick markers under the slider — one per year in the data.
+  const yearMarks = useMemo(() => {
+    if (allMonths.length === 0) return [];
+    const marks: Array<{ year: string; leftPct: number }> = [];
+    let seen = '';
+    allMonths.forEach((m, i) => {
+      const y = m.slice(0, 4);
+      if (y !== seen) {
+        marks.push({ year: y, leftPct: (i / (allMonths.length - 1)) * 100 });
+        seen = y;
+      }
+    });
+    return marks;
+  }, [allMonths]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      {/* Header row */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
             <History className="h-3 w-3 text-indigo-500" />
@@ -180,22 +211,75 @@ export function TimeMachine() {
             Scrub through history to see how each municipality looked at a given month.
           </p>
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card/60 px-4 py-3 backdrop-blur-sm dark:bg-card/30">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            District weighted €/m²
-          </div>
-          <div className="mt-0.5 text-2xl font-semibold tabular-nums">
-            €{Math.round(districtAvg).toLocaleString('pt-PT')}
-          </div>
-          <div className="text-[10px] text-muted-foreground">
-            {snapshot.length} municipalities · {snapshot.reduce((s, r) => s + r.volume, 0).toLocaleString('pt-PT')} listings
+        <div className="flex items-stretch gap-2.5">
+          <div className="rounded-2xl border border-border/60 bg-card/60 px-4 py-3 backdrop-blur-sm dark:bg-card/30">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              District €/m²
+            </div>
+            <div className="mt-0.5 text-2xl font-semibold tabular-nums">
+              €{Math.round(districtAvg).toLocaleString('pt-PT')}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              {snapshot.length} munis · {snapshot.reduce((s, r) => s + r.volume, 0).toLocaleString('pt-PT')} listings
+              {isHigh && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <TrendingUp className="h-2.5 w-2.5" /> All-time high
+                </span>
+              )}
+              {isLow && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-600 dark:text-rose-400">
+                  <TrendingDown className="h-2.5 w-2.5" /> All-time low
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Scrubber */}
       <div className="rounded-2xl border border-border/60 bg-card/80 p-5 backdrop-blur-sm dark:bg-card/40">
-        <div className="flex items-center gap-3">
+        {/* Inline trace above the slider — shows the district's price path */}
+        <div className="relative mb-3 h-[64px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={districtSeries} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="tmDistrictFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#6366f1"
+                strokeWidth={1.5}
+                fill="url(#tmDistrictFill)"
+                isAnimationActive={false}
+                dot={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+          {/* Playhead line */}
+          {allMonths.length > 1 && (
+            <div
+              className="pointer-events-none absolute inset-y-0 w-[1.5px] bg-indigo-500"
+              style={{ left: `calc(${progressPct}% - 0.75px)` }}
+            >
+              <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-indigo-500 shadow-[0_0_0_3px_rgba(99,102,241,0.18)]" />
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setIndex(0); setPlaying(false); }}
+            disabled={!canPlay}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+            aria-label="Jump to start"
+          >
+            <SkipBack className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={() => setPlaying(p => !p)}
             disabled={!canPlay}
@@ -211,14 +295,23 @@ export function TimeMachine() {
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
           </button>
           <button
-            onClick={() => setIndex(0)}
+            onClick={() => { setIndex(allMonths.length - 1); setPlaying(false); }}
             disabled={!canPlay}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+            aria-label="Jump to end"
+          >
+            <SkipForward className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => { setIndex(0); setPlaying(false); }}
+            disabled={!canPlay}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
             aria-label="Restart"
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="h-3.5 w-3.5" />
           </button>
-          <div className="flex-1">
+
+          <div className="relative flex-1 pl-2">
             <input
               type="range"
               min={0}
@@ -230,14 +323,17 @@ export function TimeMachine() {
               }}
               className="w-full accent-indigo-500"
             />
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-              <span>{allMonths[0] ? monthLabel(allMonths[0]) : '—'}</span>
-              <span className="font-semibold text-foreground tabular-nums">
-                {currentMonth ? monthLabel(currentMonth) : '—'}
-              </span>
-              <span>
-                {allMonths[allMonths.length - 1] ? monthLabel(allMonths[allMonths.length - 1]) : '—'}
-              </span>
+            <div className="relative mt-1 h-3">
+              {yearMarks.map(mark => (
+                <span
+                  key={mark.year}
+                  className="absolute top-0 text-[9px] tabular-nums text-muted-foreground"
+                  style={{ left: `${mark.leftPct}%`, transform: 'translateX(-50%)' }}
+                >
+                  <span className="absolute -top-1 left-1/2 h-1 w-px -translate-x-1/2 bg-muted-foreground/30" />
+                  {mark.year}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -245,50 +341,78 @@ export function TimeMachine() {
 
       {/* Movers */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm dark:bg-card/30">
-          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <TrendingUp className="h-3 w-3 text-emerald-500" />
-            Biggest gainers vs last year
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <TrendingUp className="h-3 w-3 text-emerald-500" />
+              Biggest gainers vs last year
+            </div>
+            <span className="text-[10px] text-muted-foreground">12-month change</span>
           </div>
           <div className="mt-3 space-y-2">
             {movers.gainers.length === 0 && (
               <div className="text-xs text-muted-foreground">Not enough history yet.</div>
             )}
-            {movers.gainers.map(m => (
-              <div key={m.municipio} className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{m.municipio}</div>
-                  <div className="text-[10px] text-muted-foreground tabular-nums">
-                    €{Math.round(m.avgM2).toLocaleString('pt-PT')}/m²
+            {movers.gainers.map((m, i) => (
+              <div
+                key={m.municipio}
+                className="flex items-center justify-between rounded-lg border border-emerald-500/10 bg-background/50 px-3 py-2 dark:bg-background/20"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={cn(
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                    i === 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                      : i === 1 ? 'bg-slate-400/20 text-slate-600 dark:text-slate-300'
+                        : 'bg-orange-600/20 text-orange-700 dark:text-orange-500',
+                  )}>
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{m.municipio}</div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
+                      €{Math.round(m.avgM2).toLocaleString('pt-PT')}/m²
+                    </div>
                   </div>
                 </div>
-                <span className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                <span className="text-base font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                   +{m.yoyPct.toFixed(1)}%
                 </span>
               </div>
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm dark:bg-card/30">
-          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <TrendingDown className="h-3 w-3 text-rose-500" />
-            Biggest losers vs last year
+
+        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <TrendingDown className="h-3 w-3 text-rose-500" />
+              Biggest losers vs last year
+            </div>
+            <span className="text-[10px] text-muted-foreground">12-month change</span>
           </div>
           <div className="mt-3 space-y-2">
             {movers.losers.length === 0 && (
               <div className="text-xs text-muted-foreground">Not enough history yet.</div>
             )}
-            {movers.losers.map(m => (
-              <div key={m.municipio} className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{m.municipio}</div>
-                  <div className="text-[10px] text-muted-foreground tabular-nums">
-                    €{Math.round(m.avgM2).toLocaleString('pt-PT')}/m²
+            {movers.losers.map((m, i) => (
+              <div
+                key={m.municipio}
+                className="flex items-center justify-between rounded-lg border border-rose-500/10 bg-background/50 px-3 py-2 dark:bg-background/20"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted/60 text-[10px] font-bold text-muted-foreground">
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{m.municipio}</div>
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
+                      €{Math.round(m.avgM2).toLocaleString('pt-PT')}/m²
+                    </div>
                   </div>
                 </div>
                 <span
                   className={cn(
-                    'text-sm font-semibold tabular-nums',
+                    'text-base font-semibold tabular-nums',
                     m.yoyPct >= 0
                       ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-rose-600 dark:text-rose-400',
@@ -306,7 +430,9 @@ export function TimeMachine() {
       {/* Snapshot bar chart */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Snapshot at {currentMonth ? monthLabel(currentMonth) : '—'}</CardTitle>
+          <CardTitle className="text-base">
+            Snapshot · {currentMonth ? monthLabel(currentMonth) : '—'}
+          </CardTitle>
           <CardDescription>
             €/m² per municipality — bars tinted by year-over-year change.
           </CardDescription>
@@ -355,18 +481,18 @@ export function TimeMachine() {
               </ResponsiveContainer>
             )}
           </div>
-          <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-4 rounded-sm" style={{ backgroundColor: 'rgb(16, 200, 129)' }} />
-              +YoY
+              Gaining YoY
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-4 rounded-sm" style={{ backgroundColor: 'rgb(220, 70, 90)' }} />
-              –YoY
+              Losing YoY
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-4 rounded-sm bg-slate-400/60" />
-              No history
+              No history yet
             </span>
           </div>
         </CardContent>

@@ -1,7 +1,7 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { filterRecords } from '@/lib/dataUtils';
 import { useAvaliaData, type Scope } from '@/hooks/useAvaliaData';
-import type { ChartMetric, DrilldownState, HabitacaoRecord, Page } from '@/lib/types';
+import { PAGE_PATHS, pathToPage, type ChartMetric, type DrilldownState, type HabitacaoRecord, type Page } from '@/lib/types';
 
 interface DashboardContextValue {
   page: Page;
@@ -46,7 +46,28 @@ interface DashboardContextValue {
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const [page, setPage] = useState<Page>('market-overview');
+  const [page, setPageState] = useState<Page>(() =>
+    typeof window !== 'undefined' ? pathToPage(window.location.pathname) : 'market-overview',
+  );
+
+  // Page setter writes to the URL; popstate keeps state in sync with back/forward.
+  const setPage = (next: Page) => {
+    setPageState(next);
+    if (typeof window !== 'undefined') {
+      const path = PAGE_PATHS[next];
+      if (window.location.pathname !== path) {
+        window.history.pushState({}, '', path);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPop = () => setPageState(pathToPage(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   const [drilldown, setDrilldown] = useState<DrilldownState>({ municipio: null, freguesia: null });
   const [tipoVenda, setTipoVenda] = useState<'compra' | 'arrendamento'>('compra');
   const [metric, setMetric] = useState<ChartMetric>('avg_m2');

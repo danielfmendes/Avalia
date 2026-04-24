@@ -5,15 +5,10 @@ import { PriceChart } from '@/components/PriceChart';
 import { DistrictSummary } from '@/components/DistrictSummary';
 import { FilterBar } from '@/components/FilterBar';
 import { ChevronRight, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function MarketOverview() {
   const { drilldown, resetDrilldown, setMunicipio, tipoVenda } = useDashboard();
-
-  const locationLabel = drilldown.freguesia
-    ? drilldown.freguesia
-    : drilldown.municipio
-      ? drilldown.municipio
-      : 'Lisboa District';
 
   return (
     <div className="space-y-6">
@@ -26,17 +21,27 @@ export function MarketOverview() {
           <div className="mt-1 flex items-center gap-2">
             <button
               onClick={resetDrilldown}
-              className="text-3xl font-semibold tracking-tight text-muted-foreground/60 hover:text-foreground transition-colors"
+              className={cn(
+                'text-3xl font-semibold tracking-tight transition-colors',
+                drilldown.municipio
+                  ? 'text-muted-foreground/60 hover:text-foreground'
+                  : 'text-foreground',
+              )}
               disabled={!drilldown.municipio}
             >
-              Lisboa
+              {drilldown.municipio ? 'Lisboa' : 'Lisboa District'}
             </button>
             {drilldown.municipio && (
               <>
                 <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
                 <button
                   onClick={() => setMunicipio(drilldown.municipio)}
-                  className="text-3xl font-semibold tracking-tight text-muted-foreground/60 hover:text-foreground transition-colors"
+                  className={cn(
+                    'text-3xl font-semibold tracking-tight transition-colors',
+                    drilldown.freguesia
+                      ? 'text-muted-foreground/60 hover:text-foreground'
+                      : 'text-foreground',
+                  )}
                   disabled={!drilldown.freguesia}
                 >
                   {drilldown.municipio}
@@ -48,9 +53,6 @@ export function MarketOverview() {
                 <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
                 <span className="text-3xl font-semibold tracking-tight">{drilldown.freguesia}</span>
               </>
-            )}
-            {!drilldown.municipio && (
-              <span className="text-3xl font-semibold tracking-tight -ml-2">{locationLabel}</span>
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

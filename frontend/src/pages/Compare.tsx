@@ -1,15 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { GitCompareArrows, Plus, X, Crown } from 'lucide-react';
+import {
+  GitCompareArrows, Plus, X, Crown, ArrowUpRight, ArrowDownRight, Search,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useDashboard } from '@/context/DashboardContext';
 import { getMunicipioStats } from '@/lib/dataUtils';
 import { cn } from '@/lib/utils';
 import type { MunicipioStat, HabitacaoRecord } from '@/lib/types';
 
-const SERIES_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#d946ef'];
+const MAX_SELECTED = 6;
+
+// Six distinct hues that stay legible on both themes.
+const SERIES_COLORS = [
+  '#6366f1', // indigo
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#d946ef', // fuchsia
+  '#06b6d4', // cyan
+  '#ef4444', // red
+];
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() =>
@@ -45,125 +58,261 @@ function pricePerM2Series(
     .map(([mes_ano, { w, tot }]) => ({ mes_ano, value: tot > 0 ? w / tot : 0 }));
 }
 
-function ChipSelector({
-  all, selected, onAdd, onRemove, max,
+// ── Add-municipality popover ────────────────────────────────────────────────
+// Rendered via portal so `backdrop-filter` on ancestor containers (which creates
+// a new stacking context) can't clip it behind the municipality cards below.
+function AddPopover({
+  available, onAdd, disabled,
 }: {
-  all: string[];
-  selected: string[];
+  available: string[];
   onAdd: (name: string) => void;
-  onRemove: (name: string) => void;
-  max: number;
+  disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const available = all.filter(n => !selected.includes(n)).sort((a, b) => a.localeCompare(b));
+  const [query, setQuery] = useState('');
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Keep the popover anchored to the button as the layout moves.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function update() {
+      if (!btnRef.current) return;
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: r.left });
+    }
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
+
+  // Close on outside click + ESC.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (popRef.current?.contains(t) || btnRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const base = [...available].sort((a, b) => a.localeCompare(b));
+    return q ? base.filter(n => n.toLowerCase().includes(q)) : base;
+  }, [available, query]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {selected.map((name, i) => (
-        <span
-          key={name}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/60 py-1 pl-2 pr-1 text-xs font-medium"
+    <>
+      <button
+        ref={btnRef}
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1 text-xs font-medium transition-colors',
+          disabled
+            ? 'border-border/40 text-muted-foreground/50 cursor-not-allowed'
+            : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border',
+        )}
+      >
+        <Plus className="h-3 w-3" />
+        Add municipality
+      </button>
+      {open && !disabled && pos && createPortal(
+        <div
+          ref={popRef}
+          className="fixed z-[100] w-64 rounded-lg border border-border bg-popover p-1.5 shadow-xl"
+          style={{ top: pos.top, left: pos.left }}
         >
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: SERIES_COLORS[i] }}
-          />
-          {name}
-          <button
-            onClick={() => onRemove(name)}
-            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={`Remove ${name}`}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
-      ))}
-      {selected.length < max && (
-        <div className="relative">
-          <button
-            onClick={() => setOpen(o => !o)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border"
-          >
-            <Plus className="h-3 w-3" />
-            Add municipality
-          </button>
-          {open && (
-            <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
-              {available.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-muted-foreground">No more options</div>
-              ) : (
-                available.map(name => (
-                  <button
-                    key={name}
-                    onClick={() => {
-                      onAdd(name);
-                      setOpen(false);
-                    }}
-                    className="flex w-full items-center rounded-md px-3 py-1.5 text-xs hover:bg-muted"
-                  >
-                    {name}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+          <div className="flex items-center gap-1.5 rounded-md border border-border/50 bg-background px-2 py-1">
+            <Search className="h-3 w-3 text-muted-foreground" />
+            <input
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search…"
+              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground/60"
+            />
+          </div>
+          <div className="mt-1 max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground">No match.</div>
+            ) : (
+              filtered.map(name => (
+                <button
+                  key={name}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => {
+                    onAdd(name);
+                    setOpen(false);
+                    setQuery('');
+                  }}
+                  className="flex w-full items-center rounded-md px-3 py-1.5 text-left text-xs hover:bg-muted"
+                >
+                  {name}
+                </button>
+              ))
+            )}
+          </div>
+        </div>,
+        document.body,
       )}
+    </>
+  );
+}
+
+function fmtM2(v: number) {
+  return `€${Math.round(v).toLocaleString('pt-PT')}`;
+}
+function fmtPrice(v: number) {
+  return v >= 1_000_000
+    ? `€${(v / 1_000_000).toFixed(2)}M`
+    : `€${Math.round(v / 1000)}K`;
+}
+
+// ── Per-municipality summary card ───────────────────────────────────────────
+function MuniCard({
+  stat, color, onRemove,
+}: {
+  stat: MunicipioStat;
+  color: string;
+  onRemove: () => void;
+}) {
+  const up = stat.yoy_change >= 0;
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm transition-all hover:border-border dark:bg-card/40"
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: color }}
+      />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+          <span className="truncate text-sm font-semibold tracking-tight">{stat.name}</span>
+        </div>
+        <button
+          onClick={onRemove}
+          className="rounded-full p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+          aria-label={`Remove ${stat.name}`}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-3">
+        <div className="text-[22px] font-semibold tracking-tight tabular-nums">
+          {fmtM2(stat.avg_m2)}
+          <span className="ml-0.5 text-xs font-normal text-muted-foreground">/m²</span>
+        </div>
+        <div className="text-[10px] text-muted-foreground tabular-nums">
+          avg sale {fmtPrice(stat.avg_preco)} · {Math.round(stat.avg_area)} m²
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <span
+          className={cn(
+            'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
+            up
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+          )}
+        >
+          {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          {Math.abs(stat.yoy_change).toFixed(1)}%
+        </span>
+        <span className="text-[10px] text-muted-foreground">YoY</span>
+        <span className="ml-auto rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground tabular-nums">
+          {stat.rental_yield.toFixed(1)}% yield
+        </span>
+      </div>
     </div>
   );
 }
 
-interface MetricRowProps {
+// ── Metric comparison matrix ────────────────────────────────────────────────
+type MetricKey = 'avg_m2' | 'avg_preco' | 'yoy_change' | 'rental_yield' | 'avg_area' | 'total_rows';
+
+interface MetricDef {
+  key: MetricKey;
   label: string;
   sub: string;
-  values: Array<{ muni: string; raw: number; formatted: string }>;
   higherIsBetter: boolean;
-  colors: string[];
+  format: (v: number) => string;
 }
 
-function MetricRow({ label, sub, values, higherIsBetter, colors }: MetricRowProps) {
-  if (values.length === 0) return null;
-  const best = values.reduce((a, b) =>
-    (higherIsBetter ? b.raw > a.raw : b.raw < a.raw) ? b : a,
-  );
-  const maxAbs = Math.max(...values.map(v => Math.abs(v.raw)), 0.0001);
+const METRICS: MetricDef[] = [
+  { key: 'avg_m2',       label: 'Price / m²',        sub: '2023 weighted avg',      higherIsBetter: false, format: fmtM2 },
+  { key: 'avg_preco',    label: 'Avg sale price',    sub: '2023 weighted avg',      higherIsBetter: false, format: fmtPrice },
+  { key: 'yoy_change',   label: 'YoY change',        sub: '€/m² 2022 → 2023',        higherIsBetter: true,  format: v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` },
+  { key: 'rental_yield', label: 'Rental yield',      sub: 'gross annual',           higherIsBetter: true,  format: v => `${v.toFixed(1)}%` },
+  { key: 'avg_area',     label: 'Avg area',          sub: 'm² per listing',         higherIsBetter: true,  format: v => `${Math.round(v)} m²` },
+  { key: 'total_rows',   label: 'Listings volume',   sub: '2023 total',             higherIsBetter: true,  format: v => v.toLocaleString('pt-PT') },
+];
+
+// Each data cell: the formatted value + a horizontal bar showing how this
+// municipality ranks inside the row. Winner gets a crown, emerald text, and
+// a subtle tinted background.
+function MatrixCell({
+  value, rowMin, rowMax, higherIsBetter, isBest, color, format,
+}: {
+  value: number;
+  rowMin: number;
+  rowMax: number;
+  higherIsBetter: boolean;
+  isBest: boolean;
+  color: string;
+  format: (v: number) => string;
+}) {
+  const range = rowMax - rowMin;
+  // Normalize to 0..1 along "goodness". For lower-is-better, invert.
+  let norm = range > 0 ? (value - rowMin) / range : 0.5;
+  if (!higherIsBetter) norm = 1 - norm;
+  const barPct = Math.max(8, norm * 100);
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm dark:bg-card/30">
-      <div className="mb-2 flex items-baseline justify-between">
-        <div>
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-          <div className="text-[10px] text-muted-foreground/70">{sub}</div>
-        </div>
+    <div
+      className={cn(
+        'group/cell relative rounded-md px-3 py-2 transition-colors',
+        isBest && 'bg-emerald-500/[0.06]',
+      )}
+    >
+      <div className="flex items-center justify-end gap-1">
+        {isBest && <Crown className="h-3 w-3 text-amber-500" />}
+        <span
+          className={cn(
+            'text-sm font-semibold tabular-nums',
+            isBest
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-foreground',
+          )}
+        >
+          {format(value)}
+        </span>
       </div>
-      <div className="space-y-2">
-        {values.map((v, i) => {
-          const pct = (Math.abs(v.raw) / maxAbs) * 100;
-          const isWinner = v.muni === best.muni;
-          return (
-            <div key={v.muni} className="grid grid-cols-[90px_1fr_auto] items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs font-medium truncate">
-                <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: colors[i] }}
-                />
-                <span className="truncate">{v.muni}</span>
-              </div>
-              <div className="relative h-1.5 rounded-full bg-muted/60 overflow-hidden">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full"
-                  style={{ width: `${pct}%`, backgroundColor: colors[i] }}
-                />
-              </div>
-              <div className="flex items-center gap-1.5 min-w-[80px] justify-end">
-                <span className={cn('text-xs font-semibold tabular-nums', isWinner && 'text-emerald-600 dark:text-emerald-400')}>
-                  {v.formatted}
-                </span>
-                {isWinner && <Crown className="h-3 w-3 text-amber-500" />}
-              </div>
-            </div>
-          );
-        })}
+      <div className="mt-1.5 h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${barPct}%`,
+            backgroundColor: color,
+            opacity: isBest ? 1 : 0.55,
+          }}
+        />
       </div>
     </div>
   );
@@ -178,28 +327,29 @@ export function Compare() {
   );
   const allNames = useMemo(() => muniStats.map(s => s.name), [muniStats]);
 
-  const [selected, setSelected] = useState<string[]>(() => {
-    // Default to the three most expensive municipalities by default.
-    const sorted = [...muniStats].sort((a, b) => b.avg_m2 - a.avg_m2);
-    return sorted.slice(0, Math.min(3, sorted.length)).map(s => s.name);
-  });
+  const [selected, setSelected] = useState<string[]>([]);
 
-  // Re-seed selection once districtData arrives.
+  // Seed with the three most expensive once data arrives.
   useEffect(() => {
     if (selected.length === 0 && muniStats.length > 0) {
       const top = [...muniStats].sort((a, b) => b.avg_m2 - a.avg_m2).slice(0, 3).map(s => s.name);
       setSelected(top);
     }
-  }, [muniStats, selected.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [muniStats]);
 
   const selectedStats = useMemo(
-    () => selected.map(name => muniStats.find(s => s.name === name)).filter(Boolean) as MunicipioStat[],
+    () => selected
+      .map(name => muniStats.find(s => s.name === name))
+      .filter(Boolean) as MunicipioStat[],
     [selected, muniStats],
   );
+  const colorOf = (i: number) => SERIES_COLORS[i % SERIES_COLORS.length];
 
-  const trendSeries = useMemo(() => {
-    return selected.map(name => pricePerM2Series(districtData, name, tipoVenda));
-  }, [selected, districtData, tipoVenda]);
+  const trendSeries = useMemo(
+    () => selected.map(name => pricePerM2Series(districtData, name, tipoVenda)),
+    [selected, districtData, tipoVenda],
+  );
 
   const combinedChart = useMemo(() => {
     const monthSet = new Set<string>();
@@ -215,11 +365,29 @@ export function Compare() {
     });
   }, [trendSeries, selected]);
 
-  const fmtM2 = (v: number) => `€${Math.round(v).toLocaleString('pt-PT')}`;
-  const fmtPrice = (v: number) => v >= 1_000_000
-    ? `€${(v / 1_000_000).toFixed(2)}M`
-    : `€${Math.round(v / 1000)}K`;
-  const fmtInt = (v: number) => v.toLocaleString('pt-PT');
+  // For each metric, which muni wins?
+  const winners = useMemo(() => {
+    const w: Record<MetricKey, string | null> = {
+      avg_m2: null, avg_preco: null, yoy_change: null,
+      rental_yield: null, avg_area: null, total_rows: null,
+    };
+    if (selectedStats.length === 0) return w;
+    for (const m of METRICS) {
+      let best = selectedStats[0];
+      for (const s of selectedStats) {
+        if (m.higherIsBetter ? s[m.key] > best[m.key] : s[m.key] < best[m.key]) {
+          best = s;
+        }
+      }
+      w[m.key] = best.name;
+    }
+    return w;
+  }, [selectedStats]);
+
+  const available = useMemo(
+    () => allNames.filter(n => !selected.includes(n)),
+    [allNames, selected],
+  );
 
   const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
   const textColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
@@ -235,20 +403,47 @@ export function Compare() {
           </div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Compare</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick up to four municipalities and see how they stack up across price, growth, and yield.
+            Pick up to {MAX_SELECTED} municipalities and see exactly how they stack up.
           </p>
+        </div>
+        <div className="text-[11px] text-muted-foreground tabular-nums">
+          {selected.length} / {MAX_SELECTED} selected
         </div>
       </div>
 
-      {/* Chip selector */}
+      {/* Selection bar */}
       <div className="rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm dark:bg-card/40">
-        <ChipSelector
-          all={allNames}
-          selected={selected}
-          onAdd={name => setSelected(s => (s.length < 4 ? [...s, name] : s))}
-          onRemove={name => setSelected(s => s.filter(n => n !== name))}
-          max={4}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {selected.map((name, i) => (
+            <span
+              key={name}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 py-1 pl-2 pr-1 text-xs font-medium"
+            >
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: colorOf(i) }} />
+              {name}
+              <button
+                onClick={() => setSelected(s => s.filter(n => n !== name))}
+                className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={`Remove ${name}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <AddPopover
+            available={available}
+            onAdd={name => setSelected(s => (s.length < MAX_SELECTED ? [...s, name] : s))}
+            disabled={selected.length >= MAX_SELECTED}
+          />
+          {selected.length > 0 && (
+            <button
+              onClick={() => setSelected([])}
+              className="ml-auto rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {selectedStats.length === 0 ? (
@@ -257,67 +452,92 @@ export function Compare() {
         </div>
       ) : (
         <>
-          {/* Metric rows */}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <MetricRow
-              label="Price per m²"
-              sub="2023 weighted average"
-              higherIsBetter={false}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.avg_m2, formatted: fmtM2(s.avg_m2),
-              }))}
-            />
-            <MetricRow
-              label="Average sale price"
-              sub="2023 weighted average"
-              higherIsBetter={false}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.avg_preco, formatted: fmtPrice(s.avg_preco),
-              }))}
-            />
-            <MetricRow
-              label="Year-over-year change"
-              sub="€/m² growth 2022 → 2023"
-              higherIsBetter={true}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.yoy_change,
-                formatted: `${s.yoy_change >= 0 ? '+' : ''}${s.yoy_change.toFixed(1)}%`,
-              }))}
-            />
-            <MetricRow
-              label="Gross rental yield"
-              sub="implied annual, compra vs arrendamento"
-              higherIsBetter={true}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.rental_yield,
-                formatted: `${s.rental_yield.toFixed(1)}%`,
-              }))}
-            />
-            <MetricRow
-              label="Average listing area"
-              sub="square metres per sale"
-              higherIsBetter={true}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.avg_area, formatted: `${Math.round(s.avg_area)} m²`,
-              }))}
-            />
-            <MetricRow
-              label="Listings volume"
-              sub="2023 total"
-              higherIsBetter={true}
-              colors={SERIES_COLORS}
-              values={selectedStats.map(s => ({
-                muni: s.name, raw: s.total_rows, formatted: fmtInt(s.total_rows),
-              }))}
-            />
+          {/* Per-municipality cards */}
+          <div className={cn(
+            'grid gap-3',
+            selectedStats.length === 1 && 'grid-cols-1',
+            selectedStats.length === 2 && 'grid-cols-1 sm:grid-cols-2',
+            selectedStats.length === 3 && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+            selectedStats.length >= 4 && 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+            selectedStats.length >= 5 && 'grid-cols-2 md:grid-cols-3 xl:grid-cols-6',
+          )}>
+            {selectedStats.map((s, i) => (
+              <MuniCard
+                key={s.name}
+                stat={s}
+                color={colorOf(i)}
+                onRemove={() => setSelected(prev => prev.filter(n => n !== s.name))}
+              />
+            ))}
           </div>
 
-          {/* Trend chart */}
+          {/* Comparison matrix */}
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm dark:bg-card/40">
+            <div className="border-b border-border/50 px-5 py-3">
+              <div className="text-sm font-semibold">Metric comparison</div>
+              <div className="text-[11px] text-muted-foreground">
+                Each bar shows how that municipality ranks in the row. Crown marks the winner.
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs table-fixed">
+                <colgroup>
+                  <col style={{ width: '200px' }} />
+                  {selectedStats.map(s => (
+                    <col key={s.name} />
+                  ))}
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border/40">
+                    <th className="px-4 py-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Metric
+                    </th>
+                    {selectedStats.map((s, i) => (
+                      <th
+                        key={s.name}
+                        className="px-3 py-2.5 text-right text-[10px] uppercase tracking-wider text-muted-foreground"
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colorOf(i) }} />
+                          <span className="truncate">{s.name}</span>
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {METRICS.map(m => {
+                    const values = selectedStats.map(s => s[m.key]);
+                    const rowMin = Math.min(...values);
+                    const rowMax = Math.max(...values);
+                    return (
+                      <tr key={m.key}>
+                        <td className="px-4 py-2 align-middle">
+                          <div className="text-xs font-medium">{m.label}</div>
+                          <div className="text-[10px] text-muted-foreground">{m.sub}</div>
+                        </td>
+                        {selectedStats.map((s, i) => (
+                          <td key={s.name} className="px-2 py-2 align-middle">
+                            <MatrixCell
+                              value={s[m.key]}
+                              rowMin={rowMin}
+                              rowMax={rowMax}
+                              higherIsBetter={m.higherIsBetter}
+                              isBest={winners[m.key] === s.name}
+                              color={colorOf(i)}
+                              format={m.format}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Trend chart (unchanged) */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Price per m² over time</CardTitle>
@@ -363,7 +583,7 @@ export function Compare() {
                         key={name}
                         type="monotone"
                         dataKey={name}
-                        stroke={SERIES_COLORS[i]}
+                        stroke={colorOf(i)}
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}

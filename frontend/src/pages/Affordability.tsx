@@ -80,25 +80,34 @@ export function Affordability() {
   const munis = useMemo(() => municipalityRows(districtData), [districtData]);
   const parishes = useMemo(() => parishRows(districtData), [districtData]);
 
+  // Sort from "best fit" downwards:
+  //  1. Affordable rows first — most expensive one that still fits the budget on top.
+  //  2. Then over-budget rows — least over-budget first, most unreachable at the bottom.
+  function sortByAffordability<T extends { avgPrice: number }>(
+    rows: T[],
+    budgetCents: number,
+  ): Array<T & { gap: number; pctOfBudget: number }> {
+    const enriched = rows.map(r => ({
+      ...r,
+      gap: budgetCents - r.avgPrice,
+      pctOfBudget: r.avgPrice / budgetCents,
+    }));
+    const affordable = enriched
+      .filter(r => r.avgPrice <= budgetCents)
+      .sort((a, b) => b.avgPrice - a.avgPrice);
+    const unaffordable = enriched
+      .filter(r => r.avgPrice > budgetCents)
+      .sort((a, b) => a.avgPrice - b.avgPrice);
+    return [...affordable, ...unaffordable];
+  }
+
   const muniEval = useMemo(
-    () => munis
-      .map(r => {
-        const gap = budget - r.avgPrice;
-        const pctOfBudget = r.avgPrice / budget;
-        return { ...r, gap, pctOfBudget };
-      })
-      .sort((a, b) => a.avgPrice - b.avgPrice),
+    () => sortByAffordability(munis, budget),
     [munis, budget],
   );
 
   const parishEval = useMemo(
-    () => parishes
-      .map(r => {
-        const gap = budget - r.avgPrice;
-        const pctOfBudget = r.avgPrice / budget;
-        return { ...r, gap, pctOfBudget };
-      })
-      .sort((a, b) => a.avgPrice - b.avgPrice),
+    () => sortByAffordability(parishes, budget),
     [parishes, budget],
   );
 
@@ -363,7 +372,7 @@ export function Affordability() {
 
       {scope === 'freguesias' && parishEval.length > 60 && (
         <p className="text-[10px] text-muted-foreground text-center">
-          Showing the 60 most affordable parishes ({parishEval.length} total).
+          Showing the 60 best-matching parishes ({parishEval.length} total).
         </p>
       )}
       <p className="text-[10px] text-muted-foreground leading-relaxed">

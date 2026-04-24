@@ -1,8 +1,7 @@
 import { useDashboard } from '@/context/DashboardContext';
 import { ModeToggle } from '@/components/mode-toggle';
 import {
-  BarChart3, Sparkles, Flame, GitCompareArrows, BedDouble,
-  Scale, Wallet, History,
+  BarChart3, Sparkles, GitCompareArrows, BedDouble, Wallet, History,
 } from 'lucide-react';
 import type { Page } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -29,14 +28,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'market-overview',    label: 'Overview',     icon: <BarChart3 className="h-3.5 w-3.5" /> },
-  { id: 'investment-heatmap', label: 'Heatmap',      icon: <Flame className="h-3.5 w-3.5" /> },
-  { id: 'ai-predictions',     label: 'Forecast',     icon: <Sparkles className="h-3.5 w-3.5" /> },
-  { id: 'compare',            label: 'Compare',      icon: <GitCompareArrows className="h-3.5 w-3.5" /> },
-  { id: 'rooms',              label: 'Rooms',        icon: <BedDouble className="h-3.5 w-3.5" /> },
-  { id: 'rent-vs-buy',        label: 'Rent vs Buy',  icon: <Scale className="h-3.5 w-3.5" /> },
-  { id: 'affordability',      label: 'Affordability',icon: <Wallet className="h-3.5 w-3.5" /> },
-  { id: 'time-machine',       label: 'Time Machine', icon: <History className="h-3.5 w-3.5" /> },
+  { id: 'market-overview', label: 'Overview',     icon: <BarChart3 className="h-3.5 w-3.5" /> },
+  { id: 'ai-predictions',  label: 'Forecast',     icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { id: 'compare',         label: 'Compare',      icon: <GitCompareArrows className="h-3.5 w-3.5" /> },
+  { id: 'rooms',           label: 'Rooms',        icon: <BedDouble className="h-3.5 w-3.5" /> },
+  { id: 'affordability',   label: 'Affordability',icon: <Wallet className="h-3.5 w-3.5" /> },
+  { id: 'time-machine',    label: 'Time Machine', icon: <History className="h-3.5 w-3.5" /> },
 ];
 
 export function TopNav() {

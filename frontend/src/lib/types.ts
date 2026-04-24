@@ -15,12 +15,27 @@ export interface HabitacaoRecord {
 export type Page =
   | 'market-overview'
   | 'ai-predictions'
-  | 'investment-heatmap'
   | 'compare'
   | 'rooms'
-  | 'rent-vs-buy'
   | 'affordability'
   | 'time-machine';
+
+// URL slug ↔ page ID. Kept here so routing lives alongside the page type.
+export const PAGE_PATHS: Record<Page, string> = {
+  'market-overview': '/',
+  'ai-predictions':  '/forecast',
+  'compare':         '/compare',
+  'rooms':           '/rooms',
+  'affordability':   '/affordability',
+  'time-machine':    '/time-machine',
+};
+
+export function pathToPage(path: string): Page {
+  const clean = path.replace(/\/+$/, '') || '/';
+  const entry = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
+    .find(([, p]) => p === clean);
+  return entry?.[0] ?? 'market-overview';
+}
 
 export interface DrilldownState {
   municipio: string | null;

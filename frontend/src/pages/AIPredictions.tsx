@@ -9,12 +9,14 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { Sparkles, TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle2, Info, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDashboard } from '@/context/DashboardContext';
-import { aggregateByMonth, generateForecast, getMunicipioStats } from '@/lib/dataUtils';
+import { aggregateByMonth, generateForecast, wavg } from '@/lib/dataUtils';
+import { Sparkline } from '@/components/Sparkline';
 import { cn } from '@/lib/utils';
+import type { HabitacaoRecord } from '@/lib/types';
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() =>
@@ -75,10 +77,58 @@ function InsightIcon({ type }: { type: Insight['type'] }) {
   return <Info className="h-4 w-4 text-blue-500" />;
 }
 
+// ── Per-municipality forecast ────────────────────────────────────────────────
+// Applies the same trailing-18-month linear trend the hero chart uses, but one
+// municipality at a time. No composite score, no opinion baked in — just the
+// model's own output, surfaced per region.
+interface MuniForecast {
+  municipio: string;
+  current: number;
+  projected: number;
+  changePct: number;
+  months: number;     // history points used — confidence proxy
+  spark: Array<{ value: number }>;
+}
+
+function perMunicipalityForecast(
+  records: HabitacaoRecord[],
+  tipoVenda: 'compra' | 'arrendamento',
+): MuniForecast[] {
+  const scope = records.filter(
+    r => r.tipo_venda === tipoVenda && r.freguesia === 'Grouped at Municipio level',
+  );
+  const munis = [...new Set(scope.map(r => r.municipio))];
+
+  return munis
+    .map(name => {
+      const rs = scope.filter(r => r.municipio === name);
+      const hist = aggregateByMonth(rs, 'avg_m2');
+      const fc = generateForecast(hist);
+      const current = hist[hist.length - 1]?.value ?? 0;
+      const projected = fc[fc.length - 1]?.value ?? current;
+      const changePct = current > 0 ? ((projected - current) / current) * 100 : 0;
+      return {
+        municipio: name,
+        current,
+        projected,
+        changePct,
+        months: hist.length,
+        spark: hist.slice(-18).map(p => ({ value: p.value })),
+      };
+    })
+    .filter(r => r.current > 0 && r.months >= 6)
+    .sort((a, b) => b.changePct - a.changePct);
+}
+
+function confidenceLabel(months: number): { label: string; tone: string } {
+  if (months >= 18) return { label: 'High', tone: 'text-emerald-600 dark:text-emerald-400' };
+  if (months >= 12) return { label: 'Medium', tone: 'text-amber-600 dark:text-amber-400' };
+  return { label: 'Low', tone: 'text-muted-foreground' };
+}
+
 export function AIPredictions() {
-  const { filteredData, metric, drilldown, districtData } = useDashboard();
+  const { filteredData, metric, drilldown, districtData, tipoVenda } = useDashboard();
   const isDark = useIsDark();
-  const muniStats = useMemo(() => getMunicipioStats(districtData), [districtData]);
 
   const { historical, forecast, combined, splitMesAno } = useMemo(() => {
     const hist = aggregateByMonth(filteredData, metric);
@@ -109,23 +159,21 @@ export function AIPredictions() {
     return `€${Math.round(v)}`;
   };
 
-  // Neighbourhood scores table
-  const scores = useMemo(() => {
-    const maxYoy = Math.max(...muniStats.map(s => s.yoy_change));
-    const maxYield = Math.max(...muniStats.map(s => s.rental_yield));
-    const maxM2 = Math.max(...muniStats.map(s => s.avg_m2));
-    return muniStats
-      .map(s => ({
-        ...s,
-        score: Math.round(
-          Math.max(0, s.yoy_change / maxYoy) * 40 +
-          (s.rental_yield / maxYield) * 40 +
-          (1 - s.avg_m2 / maxM2) * 20,
-        ),
-        forecast12m: s.avg_m2 * (1 + forecastChange / 100),
-      }))
-      .sort((a, b) => b.score - a.score);
-  }, [muniStats, forecastChange]);
+  const muniForecasts = useMemo(
+    () => perMunicipalityForecast(districtData, tipoVenda),
+    [districtData, tipoVenda],
+  );
+
+  const benchmark = useMemo(() => {
+    // District-wide weighted €/m² for the latest month — used as a "vs district" badge.
+    const scope = districtData.filter(
+      r => r.tipo_venda === tipoVenda && r.freguesia === 'Grouped at Municipio level',
+    );
+    if (scope.length === 0) return 0;
+    const latest = scope.reduce((m, r) => (r.mes_ano > m ? r.mes_ano : m), '');
+    const rs = scope.filter(r => r.mes_ano === latest);
+    return wavg(rs, 'avg_m2');
+  }, [districtData, tipoVenda]);
 
   return (
     <div className="space-y-6">
@@ -239,7 +287,6 @@ export function AIPredictions() {
                     }}
                   />
                 )}
-                {/* Confidence band */}
                 <Area
                   type="monotone"
                   dataKey="upper"
@@ -256,7 +303,6 @@ export function AIPredictions() {
                   fillOpacity={0.0}
                   name="Lower bound"
                 />
-                {/* Historical */}
                 <Area
                   type="monotone"
                   dataKey="value"
@@ -281,7 +327,7 @@ export function AIPredictions() {
         </CardContent>
       </Card>
 
-      {/* Two-column: AI insights + score table */}
+      {/* Two-column: AI insights + per-muni forecast */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* AI Insights */}
         <div className="space-y-3">
@@ -314,78 +360,105 @@ export function AIPredictions() {
           </div>
         </div>
 
-        {/* Neighbourhood Score Table */}
+        {/* Per-municipality forecast */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-            Investment Ranking
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+              Forecast by municipality
+            </h2>
+            <span className="text-[10px] text-muted-foreground">
+              12-month · {tipoVenda === 'compra' ? 'sale' : 'rental'}
+            </span>
+          </div>
           <Card>
-            <CardContent className="pt-4 pb-2">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b">
-                    <th className="pb-2 text-left">Municipality</th>
-                    <th className="pb-2 text-right">€/m²</th>
-                    <th className="pb-2 text-right">Yield</th>
-                    <th className="pb-2 text-right">Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {scores.map((s, idx) => (
-                    <tr key={s.name} className="hover:bg-muted/30 transition-colors">
-                      <td className="py-2 pr-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono text-muted-foreground w-4">
-                            {idx + 1}.
-                          </span>
-                          <span className="font-medium truncate max-w-[100px]">{s.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2 text-right font-mono">
-                        €{Math.round(s.avg_m2 / 100) * 100}
-                      </td>
-                      <td className="py-2 text-right text-amber-600 dark:text-amber-400 font-medium">
-                        {s.rental_yield.toFixed(1)}%
-                      </td>
-                      <td className="py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <div className="h-1.5 w-14 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full',
-                                s.score >= 80
-                                  ? 'bg-emerald-500'
-                                  : s.score >= 60
-                                    ? 'bg-amber-500'
-                                    : 'bg-rose-500',
-                              )}
-                              style={{ width: `${s.score}%` }}
-                            />
-                          </div>
-                          <span
-                            className={cn(
-                              'font-bold w-6',
-                              s.score >= 80
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : s.score >= 60
-                                  ? 'text-amber-600 dark:text-amber-400'
-                                  : 'text-rose-600 dark:text-rose-400',
-                            )}
-                          >
-                            {s.score}
-                          </span>
-                        </div>
-                      </td>
+            <CardContent className="p-0">
+              <div className="max-h-[520px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-card/95 backdrop-blur">
+                    <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+                      <th className="pb-2 pl-4 pt-3 text-left">Municipality</th>
+                      <th className="pb-2 pt-3 text-right">Now</th>
+                      <th className="pb-2 pt-3 text-right">Trend</th>
+                      <th className="pb-2 pt-3 text-right">12mo</th>
+                      <th className="pb-2 pr-4 pt-3 text-right">Δ%</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {muniForecasts.map(row => {
+                      const confidence = confidenceLabel(row.months);
+                      const aboveBench = benchmark > 0 && row.current > benchmark;
+                      const changeIcon = Math.abs(row.changePct) < 0.25
+                        ? <Minus className="h-3 w-3" />
+                        : row.changePct >= 0
+                          ? <ArrowUpRight className="h-3 w-3" />
+                          : <ArrowDownRight className="h-3 w-3" />;
+                      return (
+                        <tr key={row.municipio} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-2 pl-4">
+                            <div className="flex flex-col">
+                              <span className="font-medium truncate max-w-[140px]">{row.municipio}</span>
+                              <span className={cn('text-[9px]', confidence.tone)}>
+                                {confidence.label} confidence · {row.months}m
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2 text-right">
+                            <div className="font-mono tabular-nums">
+                              €{Math.round(row.current).toLocaleString('pt-PT')}
+                            </div>
+                            <div className="text-[9px] text-muted-foreground">
+                              {aboveBench ? 'above' : 'below'} avg
+                            </div>
+                          </td>
+                          <td className="py-2 text-right">
+                            <div className="flex justify-end">
+                              <div className="w-20">
+                                <Sparkline
+                                  data={row.spark}
+                                  color={row.changePct >= 0 ? '#10b981' : '#f43f5e'}
+                                  height={22}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2 text-right font-mono tabular-nums text-muted-foreground">
+                            €{Math.round(row.projected).toLocaleString('pt-PT')}
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
+                                Math.abs(row.changePct) < 0.25
+                                  ? 'bg-muted/60 text-muted-foreground'
+                                  : row.changePct > 0
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                              )}
+                            >
+                              {changeIcon}
+                              {row.changePct >= 0 ? '+' : ''}
+                              {row.changePct.toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {muniForecasts.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                          Not enough history for municipality-level forecasts yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            * Score based on YoY appreciation (40%), rental yield (40%), and affordability (20%).
-            Not financial advice. Past performance ≠ future results.
+            * Each row runs the same linear-trend model on that municipality's own 18-month history. Confidence
+            reflects data depth — low confidence means fewer observations and a wider margin for error.
           </p>
         </div>
       </div>
