@@ -15,6 +15,7 @@ export interface HabitacaoRecord {
 export type Page =
   | 'market-overview'
   | 'ai-predictions'
+  | 'signals'
   | 'compare'
   | 'rooms'
   | 'affordability'
@@ -24,6 +25,7 @@ export type Page =
 export const PAGE_PATHS: Record<Page, string> = {
   'market-overview': '/',
   'ai-predictions':  '/forecast',
+  'signals':         '/signals',
   'compare':         '/compare',
   'rooms':           '/rooms',
   'affordability':   '/affordability',

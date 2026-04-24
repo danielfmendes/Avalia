@@ -2,6 +2,7 @@ import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
 import { TopNav } from '@/components/TopNav';
 import { MarketOverview } from '@/pages/MarketOverview';
 import { AIPredictions } from '@/pages/AIPredictions';
+import { Signals } from '@/pages/Signals';
 import { Compare } from '@/pages/Compare';
 import { Rooms } from '@/pages/Rooms';
 import { Affordability } from '@/pages/Affordability';
@@ -48,6 +49,7 @@ function PageRouter() {
   switch (page) {
     case 'market-overview': return <MarketOverview />;
     case 'ai-predictions':  return <AIPredictions />;
+    case 'signals':         return <Signals />;
     case 'compare':         return <Compare />;
     case 'rooms':           return <Rooms />;
     case 'affordability':   return <Affordability />;
