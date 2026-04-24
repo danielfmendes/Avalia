@@ -161,7 +161,7 @@ export function LisbonMap() {
                   : isDrillLoading
                     ? 'Fetching parish data…'
                     : 'Parishes not yet mapped for this municipality'
-              : 'Click a municipality to drill down'}
+              : 'Hover a municipality to inspect'}
           </div>
         </div>
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -214,7 +214,7 @@ export function LisbonMap() {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        onClick={() => setMunicipio(name)}
+                        onClick={() => { if (name === 'Lisboa') setMunicipio(name); }}
                         onMouseMove={e => setTip({
                           name,
                           m2: stat?.avg_m2 ?? 0,
@@ -229,7 +229,7 @@ export function LisbonMap() {
                             stroke: 'rgba(255,255,255,0.6)',
                             strokeWidth: 0.6,
                             outline: 'none',
-                            cursor: 'pointer',
+                            cursor: name === 'Lisboa' ? 'pointer' : 'default',
                             transition: 'fill-opacity 200ms ease',
                           },
                           hover: {
@@ -238,7 +238,7 @@ export function LisbonMap() {
                             stroke: '#ffffff',
                             strokeWidth: 1.2,
                             outline: 'none',
-                            cursor: 'pointer',
+                            cursor: name === 'Lisboa' ? 'pointer' : 'default',
                             filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))',
                           },
                           pressed: { fill, outline: 'none' },
@@ -356,30 +356,32 @@ export function LisbonMap() {
           </div>
         )}
 
-        {tip && (
-          <div
-            className="pointer-events-none fixed z-50 rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 text-[11px] shadow-xl backdrop-blur-md"
-            style={{ left: tip.x + 12, top: tip.y + 12 }}
-          >
-            <div className="font-semibold">{tip.name}</div>
-            {tip.m2 > 0 ? (
-              <div className="text-muted-foreground">{fmtEur(tip.m2)}/m²</div>
-            ) : (
-              <div className="text-muted-foreground">No data</div>
-            )}
-            {tip.yoy !== null && tip.yoy !== 0 && (
-              <div
-                className={cn(
-                  'text-[10px] font-medium',
-                  tip.yoy >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
-                )}
-              >
-                {tip.yoy >= 0 ? '+' : ''}{tip.yoy.toFixed(1)}% YoY
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Tooltip — rendered outside overflow-hidden so it's never clipped */}
+      {tip && (
+        <div
+          className="pointer-events-none fixed z-[9999] rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 text-[11px] shadow-xl backdrop-blur-sm"
+          style={{ left: tip.x + 14, top: tip.y + 14 }}
+        >
+          <div className="font-semibold">{tip.name}</div>
+          {tip.m2 > 0 ? (
+            <div className="text-muted-foreground">{fmtEur(tip.m2)}/m²</div>
+          ) : (
+            <div className="text-muted-foreground">No data</div>
+          )}
+          {tip.yoy !== null && tip.yoy !== 0 && (
+            <div
+              className={cn(
+                'text-[10px] font-medium',
+                tip.yoy >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+              )}
+            >
+              {tip.yoy >= 0 ? '+' : ''}{tip.yoy.toFixed(1)}% YoY
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Legend */}
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">

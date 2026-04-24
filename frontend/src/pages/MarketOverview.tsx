@@ -2,7 +2,6 @@ import { useDashboard } from '@/context/DashboardContext';
 import { LisbonMap } from '@/components/LisbonMap';
 import { MetricCards } from '@/components/MetricCards';
 import { PriceChart } from '@/components/PriceChart';
-import { QuartosBreakdown } from '@/components/QuartosBreakdown';
 import { DistrictSummary } from '@/components/DistrictSummary';
 import { FilterBar } from '@/components/FilterBar';
 import { ChevronRight, X } from 'lucide-react';
@@ -94,8 +93,6 @@ export function MarketOverview() {
         </div>
       </div>
 
-      {/* Bedroom mix */}
-      <QuartosBreakdown />
     </div>
   );
 }

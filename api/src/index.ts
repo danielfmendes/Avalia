@@ -55,6 +55,9 @@ app.get('/api/search', async (c) => {
     // ── District level: special UNION so that municipalities that only have
     //    parish-level rows (e.g. Lisboa) also appear as a synthesised aggregate.
     if (level === 'district') {
+        // Lisboa has no pre-aggregated 'Grouped at Municipio level' rows in the DB —
+        // all other municipalities do. We synthesise Lisboa's grouped rows on the fly
+        // via UNION ALL rather than a correlated subquery (D1 compatibility).
         const districtSql = `
             SELECT * FROM habitacao WHERE freguesia = ?
             UNION ALL
@@ -62,21 +65,19 @@ app.get('/api/search', async (c) => {
                 mes_ano, tipo_venda, tipo_habitacao, quartos,
                 distrito, municipio,
                 ? AS freguesia,
-                SUM(total_rows)                                           AS total_rows,
+                SUM(total_rows)                                              AS total_rows,
                 CAST(SUM(avg_area  * total_rows) AS REAL) / SUM(total_rows) AS avg_area,
                 CAST(SUM(avg_preco * total_rows) AS REAL) / SUM(total_rows) AS avg_preco,
                 CAST(SUM(avg_m2    * total_rows) AS REAL) / SUM(total_rows) AS avg_m2
             FROM habitacao
-            WHERE freguesia != ?
-              AND municipio NOT IN (
-                  SELECT DISTINCT municipio FROM habitacao WHERE freguesia = ?
-              )
+            WHERE municipio = 'Lisboa'
+              AND freguesia != ?
             GROUP BY mes_ano, tipo_venda, tipo_habitacao, quartos, distrito, municipio
             ORDER BY mes_ano ASC
         `;
         try {
             const {results} = await c.env.DB.prepare(districtSql)
-                .bind(MUNI_LEVEL_FLAG, MUNI_LEVEL_FLAG, MUNI_LEVEL_FLAG, MUNI_LEVEL_FLAG)
+                .bind(MUNI_LEVEL_FLAG, MUNI_LEVEL_FLAG, MUNI_LEVEL_FLAG)
                 .all();
             return c.json({
                 success: true,

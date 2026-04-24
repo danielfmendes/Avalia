@@ -1,6 +1,13 @@
 import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
 import { TopNav } from '@/components/TopNav';
 import { MarketOverview } from '@/pages/MarketOverview';
+import { AIPredictions } from '@/pages/AIPredictions';
+import { InvestmentHeatmap } from '@/pages/InvestmentHeatmap';
+import { Compare } from '@/pages/Compare';
+import { Rooms } from '@/pages/Rooms';
+import { RentVsBuy } from '@/pages/RentVsBuy';
+import { Affordability } from '@/pages/Affordability';
+import { TimeMachine } from '@/pages/TimeMachine';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 function LoadingShell() {
@@ -38,6 +45,21 @@ function ErrorShell({ error, reload }: { error: string; reload: () => void }) {
   );
 }
 
+function PageRouter() {
+  const { page } = useDashboard();
+  switch (page) {
+    case 'market-overview':    return <MarketOverview />;
+    case 'ai-predictions':     return <AIPredictions />;
+    case 'investment-heatmap': return <InvestmentHeatmap />;
+    case 'compare':            return <Compare />;
+    case 'rooms':              return <Rooms />;
+    case 'rent-vs-buy':        return <RentVsBuy />;
+    case 'affordability':      return <Affordability />;
+    case 'time-machine':       return <TimeMachine />;
+    default:                   return <MarketOverview />;
+  }
+}
+
 function DashboardContent() {
   const { isLoading, isError, error, reload } = useDashboard();
 
@@ -58,7 +80,7 @@ function DashboardContent() {
           ) : isError ? (
             <ErrorShell error={error ?? 'Unknown error'} reload={reload} />
           ) : (
-            <MarketOverview />
+            <PageRouter />
           )}
         </div>
       </main>
