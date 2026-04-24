@@ -1,0 +1,9 @@
+# Ignore big dependency and build folders
+**/node_modules/
+**/dist/
+**/.idea/
+.github/
+
+# Ignore your data folders (very important for tokens!)
+backend/csv/
+backend/sql/

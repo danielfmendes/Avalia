@@ -8,10 +8,14 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// Dynamically use the ALLOWED_ORIGIN from your wrangler.toml / environment
+// UPDATED CORS: Allows production origin AND common localhost ports
 app.use('/api/*', async (c, next) => {
     const corsMiddleware = cors({
-        origin: c.env.ALLOWED_ORIGIN || '*',
+        origin: [
+            c.env.ALLOWED_ORIGIN,
+            'http://localhost:5173',
+            'http://127.0.0.1:3000'
+        ],
         allowMethods: ['GET', 'OPTIONS'],
         allowHeaders: ['Content-Type'],
         maxAge: 86400,
@@ -19,7 +23,7 @@ app.use('/api/*', async (c, next) => {
     return corsMiddleware(c, next);
 });
 
-// The Search Endpoint
+// Search Endpoint
 app.get('/api/search', async (c) => {
     const municipio = c.req.query('municipio');
     const freguesia = c.req.query('freguesia');
@@ -46,7 +50,6 @@ app.get('/api/search', async (c) => {
         params.push(rooms);
     }
 
-    // Sort by most recent and limit to keep response fast
     sql += ' ORDER BY mes_ano DESC LIMIT 200';
 
     try {
@@ -66,7 +69,7 @@ app.get('/api/search', async (c) => {
     }
 });
 
-// Helper for frontend dropdowns
+// Dropdowns Helper
 app.get('/api/municipios', async (c) => {
     try {
         const {results} = await c.env.DB.prepare(
