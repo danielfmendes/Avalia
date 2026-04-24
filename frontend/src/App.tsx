@@ -1,8 +1,6 @@
 import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
 import { TopNav } from '@/components/TopNav';
 import { MarketOverview } from '@/pages/MarketOverview';
-import { InvestmentHeatmap } from '@/pages/InvestmentHeatmap';
-import { AIPredictions } from '@/pages/AIPredictions';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 function LoadingShell() {
@@ -41,7 +39,7 @@ function ErrorShell({ error, reload }: { error: string; reload: () => void }) {
 }
 
 function DashboardContent() {
-  const { page, isLoading, isError, error, reload } = useDashboard();
+  const { isLoading, isError, error, reload } = useDashboard();
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
@@ -60,11 +58,7 @@ function DashboardContent() {
           ) : isError ? (
             <ErrorShell error={error ?? 'Unknown error'} reload={reload} />
           ) : (
-            <>
-              {page === 'market-overview' && <MarketOverview />}
-              {page === 'investment-heatmap' && <InvestmentHeatmap />}
-              {page === 'ai-predictions' && <AIPredictions />}
-            </>
+            <MarketOverview />
           )}
         </div>
       </main>

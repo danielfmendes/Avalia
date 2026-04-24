@@ -4,6 +4,7 @@ import { MetricCards } from '@/components/MetricCards';
 import { PriceChart } from '@/components/PriceChart';
 import { QuartosBreakdown } from '@/components/QuartosBreakdown';
 import { DistrictSummary } from '@/components/DistrictSummary';
+import { FilterBar } from '@/components/FilterBar';
 import { ChevronRight, X } from 'lucide-react';
 
 export function MarketOverview() {
@@ -72,7 +73,10 @@ export function MarketOverview() {
         </div>
       </div>
 
-      {/* District summary strip — always visible, grounds the view */}
+      {/* Filters — buy/rent toggle + rooms + area */}
+      <FilterBar />
+
+      {/* District summary strip — always visible */}
       <DistrictSummary />
 
       {/* KPI row (4 cards) */}
@@ -90,7 +94,7 @@ export function MarketOverview() {
         </div>
       </div>
 
-      {/* Bedroom mix — meaningful at every drill level */}
+      {/* Bedroom mix */}
       <QuartosBreakdown />
     </div>
   );

@@ -97,6 +97,7 @@ export function muniNameFrom(props: Record<string, unknown>): string {
 
 export function parishNameFrom(props: Record<string, unknown>): string {
   return (
+    (props.designacao_simplificada as string) ??
     (props.Freguesia as string) ??
     (props.freguesia as string) ??
     (props.NAME_3 as string) ??

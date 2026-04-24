@@ -61,10 +61,15 @@ export function LisbonMap() {
   // Muni stats always computed from district data. parishStats computed from
   // drillData, which the context refetched specifically for this drill.
   const muniStats = useMemo(() => getMunicipioStats(districtData), [districtData]);
-  const muniByName = useMemo(
-    () => Object.fromEntries(muniStats.map(s => [s.name, s])),
-    [muniStats],
-  );
+  // Index by both exact name AND normalized name for robust GeoJSON ↔ DB joins.
+  const muniByName = useMemo(() => {
+    const m: Record<string, (typeof muniStats)[number]> = {};
+    for (const s of muniStats) {
+      m[s.name] = s;
+      m[normalizeName(s.name)] = s;
+    }
+    return m;
+  }, [muniStats]);
 
   const parishStats = useMemo(
     () => (drilldown.municipio ? getFreguesiaStats(drillData, drilldown.municipio, tipoVenda) : []),
@@ -91,9 +96,10 @@ export function LisbonMap() {
 
   const selectedMuniFeature = useMemo(() => {
     if (!drilldown.municipio || !districtGeo.geography) return null;
+    const target = normalizeName(drilldown.municipio);
     return (
       districtGeo.geography.features.find(
-        f => districtMuniNameFrom(f.properties as Record<string, unknown>) === drilldown.municipio,
+        f => normalizeName(districtMuniNameFrom(f.properties as Record<string, unknown>)) === target,
       ) ?? null
     );
   }, [districtGeo.geography, drilldown.municipio]);
@@ -202,7 +208,7 @@ export function LisbonMap() {
                 {({ geographies }) =>
                   geographies.map(geo => {
                     const name = districtMuniNameFrom(geo.properties as Record<string, unknown>);
-                    const stat = muniByName[name];
+                    const stat = muniByName[name] ?? muniByName[normalizeName(name)];
                     const fill = colorFor(stat?.avg_m2 ?? 0);
                     return (
                       <Geography

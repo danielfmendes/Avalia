@@ -10,11 +10,10 @@ interface RoomStat {
   share: number;
 }
 
-// Normalize "T0" / "T1" / ... into a sortable order. Unknown buckets go last.
-const ORDER = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6+'];
+// Sort by the numeric part of the Tx label. Non-Tx values sort last.
 function orderOf(q: string): number {
-  const idx = ORDER.indexOf(q);
-  return idx === -1 ? 99 : idx;
+  const n = parseInt(q.replace(/\D/g, ''), 10);
+  return isNaN(n) ? 99 : n;
 }
 
 export function QuartosBreakdown() {

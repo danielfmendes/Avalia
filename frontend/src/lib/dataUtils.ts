@@ -5,17 +5,52 @@ export function filterRecords(
   tipoVenda: 'compra' | 'arrendamento',
   municipio: string | null,
   freguesia: string | null,
+  quartos?: string | null,
+  minArea?: number | null,
+  maxArea?: number | null,
 ): HabitacaoRecord[] {
-  return allData.filter(r => {
-    if (r.tipo_venda !== tipoVenda) return false;
+  const muniLower = municipio?.toLowerCase();
+
+  const geoPass = (r: HabitacaoRecord): boolean => {
     if (freguesia) {
-      return r.municipio === municipio && r.freguesia === freguesia;
+      return r.municipio.toLowerCase() === muniLower && r.freguesia === freguesia;
     }
     if (municipio) {
-      return r.municipio === municipio && r.freguesia === 'Grouped at Municipio level';
+      // Prefer the pre-aggregated grouped rows; if none exist for this muni
+      // (parish-only data), fall through to all parish rows below.
+      return r.municipio.toLowerCase() === muniLower && r.freguesia === 'Grouped at Municipio level';
     }
     return r.freguesia === 'Grouped at Municipio level';
-  });
+  };
+
+  const extraPass = (r: HabitacaoRecord): boolean => {
+    if (quartos) {
+      if (quartos === 'T4+') {
+        const n = parseInt(r.quartos.replace(/\D/g, ''), 10);
+        if (isNaN(n) || n < 4) return false;
+      } else if (r.quartos !== quartos) {
+        return false;
+      }
+    }
+    if (minArea != null && r.avg_area < minArea) return false;
+    if (maxArea != null && r.avg_area > maxArea) return false;
+    return true;
+  };
+
+  const primary = allData.filter(r => r.tipo_venda === tipoVenda && geoPass(r) && extraPass(r));
+
+  // Fallback: if we drilled into a municipality but it has no grouped rows
+  // (e.g. Lisboa whose data is parish-level only), use parish rows instead.
+  if (primary.length === 0 && municipio && !freguesia) {
+    return allData.filter(
+      r => r.tipo_venda === tipoVenda
+        && r.municipio.toLowerCase() === muniLower
+        && r.freguesia !== 'Grouped at Municipio level'
+        && extraPass(r),
+    );
+  }
+
+  return primary;
 }
 
 export function aggregateByMonth(

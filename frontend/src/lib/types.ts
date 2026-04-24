@@ -12,7 +12,7 @@ export interface HabitacaoRecord {
   avg_m2: number;
 }
 
-export type Page = 'market-overview' | 'investment-heatmap' | 'ai-predictions';
+export type Page = 'market-overview';
 
 export interface DrilldownState {
   municipio: string | null;
