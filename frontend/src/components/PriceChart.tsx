@@ -7,9 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { LineChart as LineIcon, Inbox } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { aggregateByMonth } from '@/lib/dataUtils';
 import { cn } from '@/lib/utils';
@@ -31,14 +30,11 @@ function useIsDark() {
 function formatXTick(mesAno: string): string {
   const [year, month] = mesAno.split('-');
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  // Show label every 6 months
-  return monthNames[parseInt(month) - 1] + ' ' + year.slice(2);
+  return `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`;
 }
 
 function formatYValue(value: number, metric: 'avg_m2' | 'avg_preco', tipoVenda: 'compra' | 'arrendamento'): string {
-  if (metric === 'avg_m2') {
-    return `€${Math.round(value).toLocaleString('pt-PT')}`;
-  }
+  if (metric === 'avg_m2') return `€${Math.round(value).toLocaleString('pt-PT')}`;
   if (value >= 1_000_000) return `€${(value / 1_000_000).toFixed(2)}M`;
   if (value >= 1_000) return `€${(value / 1_000).toFixed(0)}K`;
   if (tipoVenda === 'arrendamento') return `€${Math.round(value)}`;
@@ -48,7 +44,7 @@ function formatYValue(value: number, metric: 'avg_m2' | 'avg_preco', tipoVenda: 
 const TICK_INTERVAL = 5;
 
 export function PriceChart() {
-  const { filteredData, tipoVenda, metric, setTipoVenda, setMetric, drilldown } = useDashboard();
+  const { filteredData, tipoVenda, metric, setMetric, drilldown } = useDashboard();
   const isDark = useIsDark();
 
   const chartData = useMemo(
@@ -56,15 +52,14 @@ export function PriceChart() {
     [filteredData, metric],
   );
 
-  // Only show every Nth tick label to avoid crowding
   const tickFormatter = (_: string, index: number) => {
     if (index % TICK_INTERVAL !== 0) return '';
     return formatXTick(chartData[index]?.mes_ano ?? '');
   };
 
-  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const textColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
-  const lineColor = tipoVenda === 'compra' ? '#3b82f6' : '#10b981';
+  const lineColor = tipoVenda === 'compra' ? '#6366f1' : '#10b981';
 
   const subtitle = drilldown.freguesia
     ? `${drilldown.freguesia}, ${drilldown.municipio}`
@@ -72,98 +67,92 @@ export function PriceChart() {
       ? drilldown.municipio
       : 'All Lisboa District';
 
+  const isEmpty = chartData.length === 0 || chartData.every(p => p.value === 0);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-base">Price Trend</CardTitle>
-            <CardDescription className="mt-0.5">{subtitle}</CardDescription>
+    <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card/80 p-5 backdrop-blur-sm dark:bg-card/40">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
+            <LineIcon className="h-3 w-3" />
+            Price Trend
           </div>
-          <div className="flex flex-wrap gap-2">
-            {/* Tipo venda toggle */}
-            <div className="flex rounded-lg border p-1 gap-1">
-              {(['compra', 'arrendamento'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTipoVenda(t)}
-                  className={cn(
-                    'rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize',
-                    tipoVenda === t
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            {/* Metric toggle */}
-            <div className="flex rounded-lg border p-1 gap-1">
-              {([
-                { key: 'avg_m2', label: '€/m²' },
-                { key: 'avg_preco', label: 'Avg Price' },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setMetric(key)}
-                  className={cn(
-                    'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                    metric === key
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <div className="mt-1 text-base font-semibold">{subtitle}</div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full">
+
+        <div className="flex rounded-full border border-border/60 bg-muted/30 p-0.5">
+          {([
+            { key: 'avg_m2', label: '€/m²' },
+            { key: 'avg_preco', label: 'Avg Price' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setMetric(key)}
+              className={cn(
+                'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                metric === key
+                  ? 'bg-background text-foreground shadow-sm ring-1 ring-border/40'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isEmpty ? (
+        <div className="flex h-[280px] flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Inbox className="h-6 w-6 opacity-40" />
+          <div className="text-sm font-medium">Not enough data for this selection</div>
+          <div className="text-xs">Try clearing the filter or switching market type.</div>
+        </div>
+      ) : (
+        <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="priceLineFade" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.2} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis
                 dataKey="mes_ano"
                 tickFormatter={tickFormatter}
-                tick={{ fill: textColor, fontSize: 11 }}
+                tick={{ fill: textColor, fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={v => formatYValue(v, metric, tipoVenda)}
-                tick={{ fill: textColor, fontSize: 11 }}
+                tick={{ fill: textColor, fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                width={72}
+                width={68}
               />
               <Tooltip
+                cursor={{ stroke: lineColor, strokeWidth: 1, strokeDasharray: '3 3' }}
                 contentStyle={{
-                  backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                  backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
                   border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   color: isDark ? '#f1f5f9' : '#0f172a',
-                  fontSize: '12px',
+                  fontSize: '11px',
+                  boxShadow: '0 8px 24px -12px rgba(0,0,0,0.25)',
                 }}
                 formatter={(value: any) => [
                   formatYValue(value, metric, tipoVenda),
-                  metric === 'avg_m2' ? (tipoVenda === 'compra' ? 'Price/m²' : 'Rent/m²/mo') : 'Avg Price',
+                  metric === 'avg_m2'
+                    ? tipoVenda === 'compra' ? 'Price/m²' : 'Rent/m²/mo'
+                    : 'Avg Price',
                 ]}
                 labelFormatter={label => {
                   const [y, m] = label.split('-');
-                  const month = new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                  return month;
+                  return new Date(parseInt(y), parseInt(m) - 1)
+                    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                 }}
-              />
-              <Legend
-                formatter={v => (
-                  <span style={{ color: textColor, fontSize: '11px' }}>
-                    {v}
-                  </span>
-                )}
               />
               <Line
                 type="monotone"
@@ -171,13 +160,12 @@ export function PriceChart() {
                 stroke={lineColor}
                 strokeWidth={2}
                 dot={false}
-                name={metric === 'avg_m2' ? (tipoVenda === 'compra' ? 'Price/m²' : 'Rent/m²/mo') : 'Avg Price'}
-                activeDot={{ r: 4, fill: lineColor }}
+                activeDot={{ r: 4, fill: lineColor, strokeWidth: 0 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }

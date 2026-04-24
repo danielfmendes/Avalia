@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { filterRecords } from '@/lib/dataUtils';
+import { useAvaliaData } from '@/hooks/useAvaliaData';
 import type { ChartMetric, DrilldownState, HabitacaoRecord, Page } from '@/lib/types';
 
 interface DashboardContextValue {
@@ -12,6 +13,9 @@ interface DashboardContextValue {
   filteredData: HabitacaoRecord[];
   allData: HabitacaoRecord[];
   isLoading: boolean;
+  isError: boolean;
+  error: string | null;
+  reload: () => void;
   tipoVenda: 'compra' | 'arrendamento';
   setTipoVenda: (tipo: 'compra' | 'arrendamento') => void;
   metric: ChartMetric;
@@ -25,19 +29,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [drilldown, setDrilldown] = useState<DrilldownState>({ municipio: null, freguesia: null });
   const [tipoVenda, setTipoVenda] = useState<'compra' | 'arrendamento'>('compra');
   const [metric, setMetric] = useState<ChartMetric>('avg_m2');
-  const [allData, setAllData] = useState<HabitacaoRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const apiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
-    fetch(`${apiUrl}/api/search`)
-      .then(r => r.json())
-      .then((json: { success: boolean; data: HabitacaoRecord[] }) => {
-        if (json.success) setAllData(json.data);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: allData, isLoading, isError, error, reload } = useAvaliaData();
 
   function setMunicipio(municipio: string | null) {
     setDrilldown({ municipio, freguesia: null });
@@ -63,7 +56,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         drilldown, setMunicipio, setFreguesia, resetDrilldown,
         filteredData,
         allData,
-        isLoading,
+        isLoading, isError, error, reload,
         tipoVenda, setTipoVenda,
         metric, setMetric,
       }}

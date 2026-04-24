@@ -40,10 +40,28 @@ export function aggregateByMonth(
     }));
 }
 
-function wavg(rs: HabitacaoRecord[], key: 'avg_m2' | 'avg_preco' | 'avg_area'): number {
+export function wavg(
+  rs: HabitacaoRecord[],
+  key: 'avg_m2' | 'avg_preco' | 'avg_area',
+): number {
   const wSum = rs.reduce((s, r) => s + r[key] * r.total_rows, 0);
   const total = rs.reduce((s, r) => s + r.total_rows, 0);
   return total > 0 ? wSum / total : 0;
+}
+
+// Returns the newest mes_ano in a record set, or null if empty.
+export function latestMonth(records: HabitacaoRecord[]): string | null {
+  let max: string | null = null;
+  for (const r of records) {
+    if (max === null || r.mes_ano > max) max = r.mes_ano;
+  }
+  return max;
+}
+
+// Subtract 12 months from a mes_ano string ("YYYY-MM"), returning a new mes_ano.
+export function minusYear(mesAno: string): string {
+  const [y, m] = mesAno.split('-').map(Number);
+  return `${y - 1}-${String(m).padStart(2, '0')}`;
 }
 
 export function getMunicipioStats(allData: HabitacaoRecord[]): MunicipioStat[] {
@@ -74,6 +92,49 @@ export function getMunicipioStats(allData: HabitacaoRecord[]): MunicipioStat[] {
       total_rows: compra2023.reduce((s, r) => s + r.total_rows, 0),
       yoy_change: m2_2022 > 0 ? ((m2_2023 - m2_2022) / m2_2022) * 100 : 0,
       rental_yield: m2_2023 > 0 ? (rentM2 * 12) / m2_2023 * 100 : 0,
+    };
+  });
+}
+
+// Parish-level stats within a municipality — used for map drill-down coloring.
+export interface FreguesiaStat {
+  name: string;
+  avg_m2: number;
+  avg_preco: number;
+  yoy_change: number;
+  total_rows: number;
+}
+
+export function getFreguesiaStats(
+  allData: HabitacaoRecord[],
+  municipio: string,
+  tipoVenda: 'compra' | 'arrendamento' = 'compra',
+): FreguesiaStat[] {
+  const scoped = allData.filter(
+    r => r.municipio === municipio
+      && r.tipo_venda === tipoVenda
+      && r.freguesia !== 'Grouped at Municipio level',
+  );
+  const names = [...new Set(scoped.map(r => r.freguesia))];
+
+  return names.map(name => {
+    const rs = scoped.filter(r => r.freguesia === name);
+    const latest = latestMonth(rs);
+    const latestYear = latest?.slice(0, 4) ?? '';
+    const prevYear = latestYear ? `${parseInt(latestYear) - 1}` : '';
+
+    const curRs = rs.filter(r => r.mes_ano.startsWith(latestYear));
+    const prevRs = rs.filter(r => r.mes_ano.startsWith(prevYear));
+
+    const m2 = wavg(curRs, 'avg_m2');
+    const prevM2 = wavg(prevRs, 'avg_m2');
+
+    return {
+      name,
+      avg_m2: m2,
+      avg_preco: wavg(curRs, 'avg_preco'),
+      yoy_change: prevM2 > 0 ? ((m2 - prevM2) / prevM2) * 100 : 0,
+      total_rows: curRs.reduce((s, r) => s + r.total_rows, 0),
     };
   });
 }
