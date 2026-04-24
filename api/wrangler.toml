@@ -7,4 +7,4 @@ binding = "DB"
 database_name = "habitacao_db"
 
 [vars]
-ALLOWED_ORIGIN = "https://causality-survey-frontend.pages.dev"
+ALLOWED_ORIGIN = "https://avalia-frontend.pages.dev"
