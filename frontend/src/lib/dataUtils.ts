@@ -1,0 +1,117 @@
+import type { HabitacaoRecord, ChartPoint, MunicipioStat } from './types';
+
+export function filterRecords(
+  allData: HabitacaoRecord[],
+  tipoVenda: 'compra' | 'arrendamento',
+  municipio: string | null,
+  freguesia: string | null,
+): HabitacaoRecord[] {
+  return allData.filter(r => {
+    if (r.tipo_venda !== tipoVenda) return false;
+    if (freguesia) {
+      return r.municipio === municipio && r.freguesia === freguesia;
+    }
+    if (municipio) {
+      return r.municipio === municipio && r.freguesia === 'Grouped at Municipio level';
+    }
+    return r.freguesia === 'Grouped at Municipio level';
+  });
+}
+
+export function aggregateByMonth(
+  records: HabitacaoRecord[],
+  metric: 'avg_m2' | 'avg_preco',
+): ChartPoint[] {
+  const map = new Map<string, { wSum: number; totalRows: number }>();
+
+  for (const r of records) {
+    const existing = map.get(r.mes_ano) ?? { wSum: 0, totalRows: 0 };
+    map.set(r.mes_ano, {
+      wSum: existing.wSum + r[metric] * r.total_rows,
+      totalRows: existing.totalRows + r.total_rows,
+    });
+  }
+
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes_ano, { wSum, totalRows }]) => ({
+      mes_ano,
+      value: totalRows > 0 ? wSum / totalRows : 0,
+    }));
+}
+
+function wavg(rs: HabitacaoRecord[], key: 'avg_m2' | 'avg_preco' | 'avg_area'): number {
+  const wSum = rs.reduce((s, r) => s + r[key] * r.total_rows, 0);
+  const total = rs.reduce((s, r) => s + r.total_rows, 0);
+  return total > 0 ? wSum / total : 0;
+}
+
+export function getMunicipioStats(allData: HabitacaoRecord[]): MunicipioStat[] {
+  const municipios = [...new Set(allData.map(r => r.municipio))];
+
+  return municipios.map(name => {
+    const base = (tv: string, year: string) =>
+      allData.filter(
+        r => r.municipio === name
+          && r.freguesia === 'Grouped at Municipio level'
+          && r.tipo_venda === tv
+          && r.mes_ano.startsWith(year),
+      );
+
+    const compra2023 = base('compra', '2023');
+    const compra2022 = base('compra', '2022');
+    const arrend2023 = base('arrendamento', '2023');
+
+    const m2_2023 = wavg(compra2023, 'avg_m2');
+    const m2_2022 = wavg(compra2022, 'avg_m2');
+    const rentM2 = wavg(arrend2023, 'avg_m2');
+
+    return {
+      name,
+      avg_m2: m2_2023,
+      avg_preco: wavg(compra2023, 'avg_preco'),
+      avg_area: wavg(compra2023, 'avg_area'),
+      total_rows: compra2023.reduce((s, r) => s + r.total_rows, 0),
+      yoy_change: m2_2022 > 0 ? ((m2_2023 - m2_2022) / m2_2022) * 100 : 0,
+      rental_yield: m2_2023 > 0 ? (rentM2 * 12) / m2_2023 * 100 : 0,
+    };
+  });
+}
+
+export function getFreguesias(allData: HabitacaoRecord[], municipio: string): string[] {
+  return [
+    ...new Set(
+      allData
+        .filter(r => r.municipio === municipio && r.freguesia !== 'Grouped at Municipio level')
+        .map(r => r.freguesia),
+    ),
+  ];
+}
+
+export function generateForecast(historicalPoints: ChartPoint[]): ChartPoint[] {
+  const recent = historicalPoints.slice(-18);
+  if (recent.length < 2) return [];
+
+  const n = recent.length;
+  const xs = recent.map((_, i) => i);
+  const ys = recent.map(p => p.value);
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
+  const slope =
+    xs.reduce((s, x, i) => s + (x - xMean) * (ys[i] - yMean), 0) /
+    xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
+  const intercept = yMean - slope * xMean;
+
+  const lastMesAno = recent[recent.length - 1].mes_ano;
+  const [lastYear, lastMonth] = lastMesAno.split('-').map(Number);
+
+  return Array.from({ length: 12 }, (_, i) => {
+    const projectedMonth = lastMonth + i + 1;
+    const year = lastYear + Math.floor((projectedMonth - 1) / 12);
+    const month = ((projectedMonth - 1) % 12) + 1;
+    const mes_ano = `${year}-${String(month).padStart(2, '0')}`;
+    const value = intercept + slope * (n + i);
+    const uncertainty = Math.abs(value) * 0.015 * (i + 1);
+    return { mes_ano, value, lower: value - uncertainty, upper: value + uncertainty, forecast: true };
+  });
+}
