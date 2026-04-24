@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { LineChart as LineIcon, Inbox } from 'lucide-react';
+import { LineChart as LineIcon, Inbox, Loader2 } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { aggregateByMonth } from '@/lib/dataUtils';
 import { cn } from '@/lib/utils';
@@ -44,7 +44,7 @@ function formatYValue(value: number, metric: 'avg_m2' | 'avg_preco', tipoVenda: 
 const TICK_INTERVAL = 5;
 
 export function PriceChart() {
-  const { filteredData, tipoVenda, metric, setMetric, drilldown } = useDashboard();
+  const { filteredData, tipoVenda, metric, setMetric, drilldown, isDrillLoading } = useDashboard();
   const isDark = useIsDark();
 
   const chartData = useMemo(
@@ -101,7 +101,12 @@ export function PriceChart() {
         </div>
       </div>
 
-      {isEmpty ? (
+      {isEmpty && isDrillLoading ? (
+        <div className="flex h-[280px] flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin opacity-60" />
+          <div className="text-xs">Fetching time series…</div>
+        </div>
+      ) : isEmpty ? (
         <div className="flex h-[280px] flex-col items-center justify-center gap-2 text-muted-foreground">
           <Inbox className="h-6 w-6 opacity-40" />
           <div className="text-sm font-medium">Not enough data for this selection</div>

@@ -1,6 +1,4 @@
-// Geometry helpers for driving react-simple-maps zoom / centering.
-// We can't use d3's bounds helpers here without an extra dep, so we walk
-// coordinates directly from GeoJSON features.
+// Geometry + identity helpers for driving react-simple-maps.
 
 type Coord = [number, number];
 
@@ -10,6 +8,7 @@ interface Geometry {
 }
 
 export interface BoundedFeature {
+  type?: string;
   properties: Record<string, unknown>;
   geometry: Geometry;
 }
@@ -48,21 +47,71 @@ export function boundsCenter(b: LngLatBounds): Coord {
   return [(b.minLng + b.maxLng) / 2, (b.minLat + b.maxLat) / 2];
 }
 
-// Pick a scale for geoMercator such that the bbox roughly fits the viewport.
-// viewportPx is the smaller dimension of the map SVG.
-export function boundsToScale(
+export function boundsToZoom(
   b: LngLatBounds,
-  viewportPx: number,
+  homeSpanDeg: { lng: number; lat: number },
   paddingRatio = 0.85,
 ): number {
-  const lngSpan = Math.max(b.maxLng - b.minLng, 0.0001);
-  const latSpan = Math.max(b.maxLat - b.minLat, 0.0001);
   const midLat = (b.minLat + b.maxLat) / 2;
-  // For geoMercator, 1 unit of "scale" ≈ 1 radian. Width in radians at a given
-  // longitude is just (deg * π / 180); height picks up a cos(lat) squish.
   const cosLat = Math.cos((midLat * Math.PI) / 180);
-  const lngRad = (lngSpan * Math.PI) / 180;
-  const latRad = (latSpan * Math.PI) / 180 / cosLat;
-  const span = Math.max(lngRad, latRad);
-  return (viewportPx * paddingRatio) / span;
+  const featLng = Math.max(b.maxLng - b.minLng, 0.0001);
+  const featLat = Math.max(b.maxLat - b.minLat, 0.0001) / cosLat;
+  const zoomLng = homeSpanDeg.lng / featLng;
+  const zoomLat = homeSpanDeg.lat / featLat;
+  return Math.max(1, Math.min(zoomLng, zoomLat) * paddingRatio);
+}
+
+// Name normalization for robust joins between data and GeoJSON. CAOP uses
+// "União das Freguesias de X" and accented forms; data may be shortened.
+export function normalizeName(name: string): string {
+  return (name ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/^união\s+das\s+freguesias\s+de\s+/i, '')
+    .replace(/^uniao\s+das\s+freguesias\s+de\s+/i, '')
+    .replace(/^freguesia\s+de\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export const MUNI_GEO_URL = '/geodata/lisbon-municipalities.json';
+
+// Single parish file covering ALL municipalities in Distrito de Lisboa.
+// Drop one GeoJSON with every parish-feature tagged by its parent municipality
+// and every muni drill-down lights up automatically.
+export const PARISH_GEO_URL = '/geodata/lisbon-parishes.json';
+
+// Extract the parent municipality name from a parish feature's properties.
+// Probes the usual CAOP / naturalearthdata / OSM key names.
+export function muniNameFrom(props: Record<string, unknown>): string {
+  return (
+    (props.NAME_2 as string) ??
+    (props.Concelho as string) ??
+    (props.municipio as string) ??
+    (props.name_2 as string) ??
+    (props.concelho as string) ??
+    ''
+  );
+}
+
+export function parishNameFrom(props: Record<string, unknown>): string {
+  return (
+    (props.Freguesia as string) ??
+    (props.freguesia as string) ??
+    (props.NAME_3 as string) ??
+    (props.Nome_Freg as string) ??
+    (props.name as string) ??
+    ''
+  );
+}
+
+export function districtMuniNameFrom(props: Record<string, unknown>): string {
+  return (
+    (props.name as string) ??
+    (props.NAME_2 as string) ??
+    (props.Concelho as string) ??
+    (props.municipio as string) ??
+    ''
+  );
 }

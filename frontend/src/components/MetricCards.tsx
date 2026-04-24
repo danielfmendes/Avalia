@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Home, TrendingUp, Ruler, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { Home, TrendingUp, Ruler, ArrowUpRight, ArrowDownRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { latestMonth, minusYear, wavg } from '@/lib/dataUtils';
 import { cn } from '@/lib/utils';
@@ -34,7 +34,7 @@ const ACCENT_CLASSES: Record<CardDef['accent'], string> = {
 };
 
 export function MetricCards() {
-  const { filteredData, tipoVenda, metric, drilldown } = useDashboard();
+  const { filteredData, tipoVenda, metric, drilldown, isDrillLoading } = useDashboard();
 
   const stats = useMemo(() => {
     const latest = latestMonth(filteredData);
@@ -72,6 +72,27 @@ export function MetricCards() {
       changePreco: pctChange(avgPreco, prevPreco),
     };
   }, [filteredData]);
+
+  // Still fetching scoped data → show a skeleton row rather than flashing 0s
+  if (stats.empty && isDrillLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm dark:bg-card/40"
+          >
+            <div className="flex items-center justify-between">
+              <div className="h-3 w-20 animate-pulse rounded bg-muted-foreground/15" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/50" />
+            </div>
+            <div className="mt-3 h-7 w-32 animate-pulse rounded bg-muted-foreground/15" />
+            <div className="mt-2.5 h-3 w-24 animate-pulse rounded bg-muted-foreground/10" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Graceful fallback when drilled into a region with no data
   if (stats.empty) {
