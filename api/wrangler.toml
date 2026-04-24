@@ -1,0 +1,10 @@
+name = "habitacao-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "habitacao_db"
+
+[vars]
+ALLOWED_ORIGIN = "https://causality-survey-frontend.pages.dev"

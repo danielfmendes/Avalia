@@ -1,2 +1,3 @@
 .idea
-data
+backend/csv/habitacaopt_arquivopt.csv
+backend/csv/habitacaopt_arquivopt_part2.csv
