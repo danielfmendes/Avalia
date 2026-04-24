@@ -76,7 +76,7 @@ function InsightIcon({ type }: { type: Insight['type'] }) {
 }
 
 export function AIPredictions() {
-  const { filteredData, tipoVenda, metric, drilldown, allData } = useDashboard();
+  const { filteredData, metric, drilldown, allData } = useDashboard();
   const isDark = useIsDark();
   const muniStats = useMemo(() => getMunicipioStats(allData), [allData]);
 
@@ -223,7 +223,7 @@ export function AIPredictions() {
                     color: isDark ? '#f1f5f9' : '#0f172a',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number, name: string) => [formatVal(value), name]}
+                  formatter={(value: any, name: any) => [formatVal(value), name]}
                 />
                 {splitMesAno && (
                   <ReferenceLine

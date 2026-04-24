@@ -148,7 +148,7 @@ export function PriceChart() {
                   color: isDark ? '#f1f5f9' : '#0f172a',
                   fontSize: '12px',
                 }}
-                formatter={(value: number) => [
+                formatter={(value: any) => [
                   formatYValue(value, metric, tipoVenda),
                   metric === 'avg_m2' ? (tipoVenda === 'compra' ? 'Price/m²' : 'Rent/m²/mo') : 'Avg Price',
                 ]}
