@@ -4,13 +4,16 @@ import {
   LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
-  GitCompareArrows, Plus, X, Crown, ArrowUpRight, ArrowDownRight, Search,
+  GitCompareArrows, Plus, X, Crown, ArrowUpRight, ArrowDownRight, Search, Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useDashboard } from '@/context/DashboardContext';
-import { getMunicipioStats } from '@/lib/dataUtils';
+import { getMunicipioStats, getParishStats } from '@/lib/dataUtils';
+import { useAvaliaData } from '@/hooks/useAvaliaData';
 import { cn } from '@/lib/utils';
 import type { MunicipioStat, HabitacaoRecord } from '@/lib/types';
+
+type CompareScope = 'munis' | 'parishes';
 
 const MAX_SELECTED = 6;
 
@@ -40,14 +43,18 @@ function useIsDark() {
 
 function pricePerM2Series(
   records: HabitacaoRecord[],
-  municipio: string,
+  region: string,
   tipoVenda: 'compra' | 'arrendamento',
+  scope: CompareScope,
 ): Array<{ mes_ano: string; value: number }> {
-  const scoped = records.filter(
-    r => r.municipio === municipio
-      && r.tipo_venda === tipoVenda
-      && r.freguesia === 'Grouped at Municipio level',
-  );
+  const scoped = records.filter(r => {
+    if (r.tipo_venda !== tipoVenda) return false;
+    if (scope === 'munis') {
+      return r.municipio === region && r.freguesia === 'Grouped at Municipio level';
+    }
+    // parishes view: region is a freguesia within Lisboa
+    return r.municipio === 'Lisboa' && r.freguesia === region;
+  });
   const map = new Map<string, { w: number; tot: number }>();
   for (const r of scoped) {
     const cur = map.get(r.mes_ano) ?? { w: 0, tot: 0 };
@@ -62,11 +69,12 @@ function pricePerM2Series(
 // Rendered via portal so `backdrop-filter` on ancestor containers (which creates
 // a new stacking context) can't clip it behind the municipality cards below.
 function AddPopover({
-  available, onAdd, disabled,
+  available, onAdd, disabled, label,
 }: {
   available: string[];
   onAdd: (name: string) => void;
   disabled: boolean;
+  label: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -130,7 +138,7 @@ function AddPopover({
         )}
       >
         <Plus className="h-3 w-3" />
-        Add municipality
+        {label}
       </button>
       {open && !disabled && pos && createPortal(
         <div
@@ -321,34 +329,56 @@ function MatrixCell({
 export function Compare() {
   const { districtData, tipoVenda } = useDashboard();
   const isDark = useIsDark();
+
+  const [scope, setScope] = useState<CompareScope>('munis');
+
+  // Fetch Lisboa's parish rows only when the parish view is active. Cached by
+  // useAvaliaData so toggling back and forth is instant.
+  const lisboaScope = scope === 'parishes'
+    ? { level: 'municipality' as const, municipio: 'Lisboa' }
+    : null;
+  const lisboaQ = useAvaliaData(lisboaScope);
+
   const muniStats = useMemo<MunicipioStat[]>(
     () => getMunicipioStats(districtData),
     [districtData],
   );
-  const allNames = useMemo(() => muniStats.map(s => s.name), [muniStats]);
+  const parishStatsForLisboa = useMemo<MunicipioStat[]>(
+    () => (scope === 'parishes' ? getParishStats(lisboaQ.data, 'Lisboa') : []),
+    [scope, lisboaQ.data],
+  );
+
+  const regionStats = scope === 'munis' ? muniStats : parishStatsForLisboa;
+  const regionRecords = scope === 'munis' ? districtData : lisboaQ.data;
+  const allNames = useMemo(() => regionStats.map(s => s.name), [regionStats]);
 
   const [selected, setSelected] = useState<string[]>([]);
 
-  // Seed with the three most expensive once data arrives.
+  // Reset the selection whenever scope changes — the set of valid names differs.
   useEffect(() => {
-    if (selected.length === 0 && muniStats.length > 0) {
-      const top = [...muniStats].sort((a, b) => b.avg_m2 - a.avg_m2).slice(0, 3).map(s => s.name);
+    setSelected([]);
+  }, [scope]);
+
+  // Seed with the three most expensive once data arrives (per scope).
+  useEffect(() => {
+    if (selected.length === 0 && regionStats.length > 0) {
+      const top = [...regionStats].sort((a, b) => b.avg_m2 - a.avg_m2).slice(0, 3).map(s => s.name);
       setSelected(top);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muniStats]);
+  }, [regionStats]);
 
   const selectedStats = useMemo(
     () => selected
-      .map(name => muniStats.find(s => s.name === name))
+      .map(name => regionStats.find(s => s.name === name))
       .filter(Boolean) as MunicipioStat[],
-    [selected, muniStats],
+    [selected, regionStats],
   );
   const colorOf = (i: number) => SERIES_COLORS[i % SERIES_COLORS.length];
 
   const trendSeries = useMemo(
-    () => selected.map(name => pricePerM2Series(districtData, name, tipoVenda)),
-    [selected, districtData, tipoVenda],
+    () => selected.map(name => pricePerM2Series(regionRecords, name, tipoVenda, scope)),
+    [selected, regionRecords, tipoVenda, scope],
   );
 
   const combinedChart = useMemo(() => {
@@ -403,12 +433,42 @@ export function Compare() {
           </div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Compare</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick up to {MAX_SELECTED} municipalities and see exactly how they stack up.
+            Pick up to {MAX_SELECTED} {scope === 'munis' ? 'municipalities' : 'Lisbon city parishes'} and see exactly how they stack up.
           </p>
         </div>
         <div className="text-[11px] text-muted-foreground tabular-nums">
           {selected.length} / {MAX_SELECTED} selected
         </div>
+      </div>
+
+      {/* Scope toggle */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground font-medium">Compare:</span>
+        <div className="flex rounded-full border border-border/60 bg-muted/30 p-0.5">
+          {([
+            { k: 'munis', label: 'Lisboa municipalities' },
+            { k: 'parishes', label: 'Lisbon city parishes' },
+          ] as const).map(opt => (
+            <button
+              key={opt.k}
+              onClick={() => setScope(opt.k)}
+              className={cn(
+                'rounded-full px-4 py-1 text-[11px] font-semibold transition-colors',
+                scope === opt.k
+                  ? 'bg-background text-foreground shadow-sm ring-1 ring-border/40'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {scope === 'parishes' && lisboaQ.isLoading && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading Lisbon city data…
+          </span>
+        )}
       </div>
 
       {/* Selection bar */}
@@ -434,6 +494,7 @@ export function Compare() {
             available={available}
             onAdd={name => setSelected(s => (s.length < MAX_SELECTED ? [...s, name] : s))}
             disabled={selected.length >= MAX_SELECTED}
+            label={scope === 'munis' ? 'Add municipality' : 'Add parish'}
           />
           {selected.length > 0 && (
             <button
@@ -448,7 +509,7 @@ export function Compare() {
 
       {selectedStats.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-8 text-center text-sm text-muted-foreground">
-          Select at least one municipality to start comparing.
+          Select at least one {scope === 'munis' ? 'municipality' : 'parish'} to start comparing.
         </div>
       ) : (
         <>

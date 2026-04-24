@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Wallet, CheckCircle2, XCircle, Home, PiggyBank, Ruler } from 'lucide-react';
+import { Wallet, CheckCircle2, XCircle, Home, PiggyBank, Ruler, Loader2 } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { wavg } from '@/lib/dataUtils';
+import { useAvaliaData } from '@/hooks/useAvaliaData';
 import { cn } from '@/lib/utils';
 import type { HabitacaoRecord } from '@/lib/types';
 
@@ -43,17 +44,17 @@ function municipalityRows(records: HabitacaoRecord[]): MuniRow[] {
     .filter(r => r.avgPrice > 0);
 }
 
-function parishRows(records: HabitacaoRecord[]): ParishRow[] {
+function parishRows(records: HabitacaoRecord[], municipio: string): ParishRow[] {
   const scope = records.filter(
     r => r.tipo_venda === 'compra'
+      && r.municipio === municipio
       && r.freguesia !== 'Grouped at Municipio level'
       && r.mes_ano.startsWith('2023'),
   );
-  const keys = [...new Set(scope.map(r => `${r.municipio}|${r.freguesia}`))];
-  return keys
-    .map(k => {
-      const [municipio, freguesia] = k.split('|');
-      const rs = scope.filter(r => r.municipio === municipio && r.freguesia === freguesia);
+  const names = [...new Set(scope.map(r => r.freguesia))];
+  return names
+    .map(freguesia => {
+      const rs = scope.filter(r => r.freguesia === freguesia);
       return {
         municipio,
         freguesia,
@@ -77,8 +78,18 @@ export function Affordability() {
   const [budget, setBudget] = useState<number>(350_000);
   const [scope, setScope] = useState<'municipios' | 'freguesias'>('municipios');
 
+  // Parish rows for Lisbon city come from the municipality-drill endpoint —
+  // the district-level feed returns only grouped-at-muni aggregates.
+  const lisboaScope = scope === 'freguesias'
+    ? { level: 'municipality' as const, municipio: 'Lisboa' }
+    : null;
+  const lisboaQ = useAvaliaData(lisboaScope);
+
   const munis = useMemo(() => municipalityRows(districtData), [districtData]);
-  const parishes = useMemo(() => parishRows(districtData), [districtData]);
+  const parishes = useMemo(
+    () => (scope === 'freguesias' ? parishRows(lisboaQ.data, 'Lisboa') : []),
+    [scope, lisboaQ.data],
+  );
 
   // Sort from "best fit" downwards:
   //  1. Affordable rows first — most expensive one that still fits the budget on top.
@@ -229,8 +240,8 @@ export function Affordability() {
         <span className="text-xs text-muted-foreground font-medium">Show:</span>
         <div className="flex rounded-full border border-border/60 bg-muted/30 p-0.5">
           {([
-            { k: 'municipios', label: 'Municipalities' },
-            { k: 'freguesias', label: 'Parishes' },
+            { k: 'municipios', label: 'Lisboa municipalities' },
+            { k: 'freguesias', label: 'Lisbon city parishes' },
           ] as const).map(opt => (
             <button
               key={opt.k}
@@ -246,6 +257,12 @@ export function Affordability() {
             </button>
           ))}
         </div>
+        {scope === 'freguesias' && lisboaQ.isLoading && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading Lisbon city data…
+          </span>
+        )}
       </div>
 
       {/* Results grid */}

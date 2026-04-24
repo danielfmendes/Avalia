@@ -97,13 +97,16 @@ export function LisbonMap() {
     return m;
   }, [parishStats]);
 
-  // ── Color scale — dynamic per level
+  // ── Color scale — drop obviously-bad low rows (under €500/m² is a data-quality
+  //    artifact, not a real Lisboa parish), then span the remaining min→max so
+  //    every parish lands somewhere meaningful on the green→red gradient.
   const [levelMin, levelMax] = useMemo(() => {
-    const values = drilldown.municipio
-      ? parishStats.map(p => p.avg_m2).filter(v => v > 0)
-      : muniStats.map(m => m.avg_m2).filter(v => v > 0);
-    if (values.length === 0) return [0, 1];
-    return [Math.min(...values), Math.max(...values)];
+    const source = drilldown.municipio
+      ? parishStats.map(p => p.avg_m2)
+      : muniStats.map(m => m.avg_m2);
+    const clean = source.filter(v => v >= 500);
+    if (clean.length === 0) return [0, 1];
+    return [Math.min(...clean), Math.max(...clean)];
   }, [drilldown.municipio, parishStats, muniStats]);
 
   // ── Geographies
@@ -210,6 +213,7 @@ export function LisbonMap() {
         )}
 
         <ComposableMap
+          key={drilldown.municipio ? `muni-${drilldown.municipio}` : 'district'}
           projection="geoMercator"
           projectionConfig={{ center: projCenter, scale: projScale }}
           width={MAP_W}
@@ -224,11 +228,18 @@ export function LisbonMap() {
                   const name = districtMuniNameFrom(geo.properties as Record<string, unknown>);
                   const stat = muniByName[name] ?? muniByName[normalizeName(name)];
                   const fill = colorFor(stat?.avg_m2 ?? 0);
+                  const isClickable = normalizeName(name) === 'lisboa';
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      onClick={() => { if (name === 'Lisboa') setMunicipio(name); }}
+                      onClick={() => { if (isClickable) setMunicipio(name); }}
+                      onMouseEnter={e => setTip({
+                        name,
+                        m2: stat?.avg_m2 ?? 0,
+                        yoy: stat?.yoy_change ?? null,
+                        x: e.clientX, y: e.clientY,
+                      })}
                       onMouseMove={e => setTip({
                         name,
                         m2: stat?.avg_m2 ?? 0,
@@ -243,7 +254,7 @@ export function LisbonMap() {
                           stroke: 'rgba(255,255,255,0.6)',
                           strokeWidth: 0.6,
                           outline: 'none',
-                          cursor: name === 'Lisboa' ? 'pointer' : 'default',
+                          cursor: isClickable ? 'pointer' : 'default',
                           transition: 'fill-opacity 200ms ease',
                         },
                         hover: {
@@ -252,7 +263,7 @@ export function LisbonMap() {
                           stroke: '#ffffff',
                           strokeWidth: 1.2,
                           outline: 'none',
-                          cursor: name === 'Lisboa' ? 'pointer' : 'default',
+                          cursor: isClickable ? 'pointer' : 'default',
                           filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))',
                         },
                         pressed: { fill, outline: 'none' },
@@ -302,6 +313,12 @@ export function LisbonMap() {
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
+                      onMouseEnter={e => setTip({
+                        name: rawName,
+                        m2: stat?.avg_m2 ?? 0,
+                        yoy: stat?.yoy_change ?? null,
+                        x: e.clientX, y: e.clientY,
+                      })}
                       onMouseMove={e => setTip({
                         name: rawName,
                         m2: stat?.avg_m2 ?? 0,
@@ -313,8 +330,8 @@ export function LisbonMap() {
                         default: {
                           fill,
                           fillOpacity: 0.88,
-                          stroke: 'rgba(255,255,255,0.75)',
-                          strokeWidth: 0.6,
+                          stroke: 'rgba(255,255,255,0.9)',
+                          strokeWidth: 1.2,
                           vectorEffect: 'non-scaling-stroke',
                           outline: 'none',
                           cursor: 'pointer',
@@ -324,9 +341,10 @@ export function LisbonMap() {
                           fill,
                           fillOpacity: 1,
                           stroke: '#ffffff',
-                          strokeWidth: 1.2,
+                          strokeWidth: 2,
                           vectorEffect: 'non-scaling-stroke',
                           outline: 'none',
+                          filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.35))',
                         },
                         pressed: { fill, outline: 'none' },
                       }}

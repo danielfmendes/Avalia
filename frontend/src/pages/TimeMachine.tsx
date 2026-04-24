@@ -72,6 +72,70 @@ function snapshotAt(
     .sort((a, b) => b.avgM2 - a.avgM2);
 }
 
+function Scrubber({
+  progressPct, disabled, onScrub,
+}: {
+  progressPct: number;
+  disabled: boolean;
+  onScrub: (pct: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const pctFromEvent = (clientX: number): number => {
+    const el = trackRef.current;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => onScrub(pctFromEvent(e.clientX));
+    const onUp = () => setDragging(false);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging]);
+
+  return (
+    <div
+      ref={trackRef}
+      onPointerDown={e => {
+        if (disabled) return;
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+        setDragging(true);
+        onScrub(pctFromEvent(e.clientX));
+      }}
+      className={cn(
+        'relative h-5 w-full select-none',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+      )}
+      role="slider"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progressPct)}
+    >
+      {/* Track */}
+      <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />
+      {/* Filled portion */}
+      <div
+        className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-indigo-500"
+        style={{ width: `${progressPct}%` }}
+      />
+      {/* Thumb */}
+      <div
+        className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.18)] ring-2 ring-background"
+        style={{ left: `${progressPct}%` }}
+      />
+    </div>
+  );
+}
+
 function yoyColor(pct: number | null, isDark: boolean): string {
   if (pct === null) return isDark ? '#64748b' : '#94a3b8';
   const capped = Math.max(-25, Math.min(25, pct));
@@ -270,8 +334,35 @@ export function TimeMachine() {
           )}
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-2">
+        {/* Custom slider — shares the trace's 0→100% coordinate system so the
+            thumb always lines up with the playhead line above it. */}
+        <Scrubber
+          progressPct={progressPct}
+          disabled={!canPlay}
+          onScrub={pct => {
+            if (allMonths.length === 0) return;
+            const next = Math.round(pct * (allMonths.length - 1));
+            setIndex(Math.max(0, Math.min(allMonths.length - 1, next)));
+            setPlaying(false);
+          }}
+        />
+
+        {/* Year ticks — anchored to the same 0→100% axis */}
+        <div className="relative mt-1 h-4">
+          {yearMarks.map(mark => (
+            <span
+              key={mark.year}
+              className="absolute top-0 text-[9px] tabular-nums text-muted-foreground"
+              style={{ left: `${mark.leftPct}%`, transform: 'translateX(-50%)' }}
+            >
+              <span className="absolute -top-1 left-1/2 h-1 w-px -translate-x-1/2 bg-muted-foreground/30" />
+              {mark.year}
+            </span>
+          ))}
+        </div>
+
+        {/* Play controls — stacked below the slider so the slider can span the full width */}
+        <div className="mt-4 flex items-center justify-center gap-2">
           <button
             onClick={() => { setIndex(0); setPlaying(false); }}
             disabled={!canPlay}
@@ -310,32 +401,6 @@ export function TimeMachine() {
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
-
-          <div className="relative flex-1 pl-2">
-            <input
-              type="range"
-              min={0}
-              max={Math.max(0, allMonths.length - 1)}
-              value={index}
-              onChange={e => {
-                setIndex(Number(e.target.value));
-                setPlaying(false);
-              }}
-              className="w-full accent-indigo-500"
-            />
-            <div className="relative mt-1 h-3">
-              {yearMarks.map(mark => (
-                <span
-                  key={mark.year}
-                  className="absolute top-0 text-[9px] tabular-nums text-muted-foreground"
-                  style={{ left: `${mark.leftPct}%`, transform: 'translateX(-50%)' }}
-                >
-                  <span className="absolute -top-1 left-1/2 h-1 w-px -translate-x-1/2 bg-muted-foreground/30" />
-                  {mark.year}
-                </span>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

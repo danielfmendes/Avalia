@@ -131,6 +131,45 @@ export function getMunicipioStats(allData: HabitacaoRecord[]): MunicipioStat[] {
   });
 }
 
+// Parish-level stats shaped identically to MunicipioStat so the Compare /
+// Affordability pages can feed parish rows into the same matrix, cards, and
+// charts without branching. Expects records that include parish rows for
+// `municipio` (e.g. the municipality-drill response for Lisboa).
+export function getParishStats(
+  allData: HabitacaoRecord[],
+  municipio: string,
+): MunicipioStat[] {
+  const scope = allData.filter(
+    r => r.municipio === municipio && r.freguesia !== 'Grouped at Municipio level',
+  );
+  const parishes = [...new Set(scope.map(r => r.freguesia))];
+
+  return parishes.map(name => {
+    const base = (tv: string, year: string) =>
+      scope.filter(
+        r => r.freguesia === name && r.tipo_venda === tv && r.mes_ano.startsWith(year),
+      );
+
+    const compra2023 = base('compra', '2023');
+    const compra2022 = base('compra', '2022');
+    const arrend2023 = base('arrendamento', '2023');
+
+    const m2_2023 = wavg(compra2023, 'avg_m2');
+    const m2_2022 = wavg(compra2022, 'avg_m2');
+    const rentM2 = wavg(arrend2023, 'avg_m2');
+
+    return {
+      name,
+      avg_m2: m2_2023,
+      avg_preco: wavg(compra2023, 'avg_preco'),
+      avg_area: wavg(compra2023, 'avg_area'),
+      total_rows: compra2023.reduce((s, r) => s + r.total_rows, 0),
+      yoy_change: m2_2022 > 0 ? ((m2_2023 - m2_2022) / m2_2022) * 100 : 0,
+      rental_yield: m2_2023 > 0 ? (rentM2 * 12) / m2_2023 * 100 : 0,
+    };
+  });
+}
+
 // Parish-level stats within a municipality — used for map drill-down coloring.
 export interface FreguesiaStat {
   name: string;
