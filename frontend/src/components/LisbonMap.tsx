@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { ArrowLeft, Info, Loader2, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboard } from '@/context/DashboardContext';
@@ -7,7 +7,6 @@ import { useGeography } from '@/hooks/useGeography';
 import { getFreguesiaStats, getMunicipioStats, type FreguesiaStat } from '@/lib/dataUtils';
 import {
   boundsCenter,
-  boundsToZoom,
   districtMuniNameFrom,
   featureBounds,
   muniNameFrom,
@@ -21,7 +20,24 @@ const MAP_W = 480;
 const MAP_H = 420;
 const HOME_CENTER: [number, number] = [-9.1, 38.82];
 const HOME_SCALE = 38000;
-const HOME_SPAN_DEG = { lng: 0.9, lat: 0.55 };
+
+// Pick a d3 Mercator `scale` so `bounds` fits the map card with some padding.
+// d3-geo Mercator: x_px = scale·(λ−λ0), y_px ≈ scale·Δφ/cos(φ) — both in radians.
+// Normalizing the latitude span by cosLat lets us reduce to a single degPerPx
+// axis and invert for the scale.
+function scaleForBounds(
+  b: { minLng: number; maxLng: number; minLat: number; maxLat: number },
+  paddingRatio = 0.85,
+): number {
+  const midLat = (b.minLat + b.maxLat) / 2;
+  const cosLat = Math.cos((midLat * Math.PI) / 180);
+  const spanLng = Math.max(b.maxLng - b.minLng, 0.0001);
+  const spanLat = Math.max(b.maxLat - b.minLat, 0.0001) / cosLat;
+  const degPerPxLng = spanLng / (MAP_W * paddingRatio);
+  const degPerPxLat = spanLat / (MAP_H * paddingRatio);
+  const degPerPx = Math.max(degPerPxLng, degPerPxLat);
+  return (180 / Math.PI) / degPerPx;
+}
 
 function lerpColor(t: number): string {
   const clamped = Math.max(0, Math.min(1, t));
@@ -114,13 +130,18 @@ export function LisbonMap() {
     });
   }, [parishGeo.geography, drilldown.municipio]);
 
-  const { zoomTarget, centerTarget } = useMemo(() => {
-    if (!selectedMuniFeature) return { zoomTarget: 1, centerTarget: HOME_CENTER };
+  // Re-project the map whenever the drill state changes. At district level we
+  // use the hard-coded HOME values; when drilled, fit the selected muni bounds
+  // into the viewport directly. No ZoomableGroup → no weird transform stacking.
+  const { projScale, projCenter } = useMemo(() => {
+    if (!selectedMuniFeature) {
+      return { projScale: HOME_SCALE, projCenter: HOME_CENTER };
+    }
     const b = featureBounds(selectedMuniFeature);
-    if (!b) return { zoomTarget: 1, centerTarget: HOME_CENTER };
+    if (!b) return { projScale: HOME_SCALE, projCenter: HOME_CENTER };
     return {
-      zoomTarget: boundsToZoom(b, HOME_SPAN_DEG, 0.78),
-      centerTarget: boundsCenter(b),
+      projScale: scaleForBounds(b, 0.88),
+      projCenter: boundsCenter(b) as [number, number],
     };
   }, [selectedMuniFeature]);
 
@@ -190,139 +211,131 @@ export function LisbonMap() {
 
         <ComposableMap
           projection="geoMercator"
-          projectionConfig={{ center: HOME_CENTER, scale: HOME_SCALE }}
+          projectionConfig={{ center: projCenter, scale: projScale }}
           width={MAP_W}
           height={MAP_H}
           style={{ width: '100%', height: 'auto' }}
         >
-          <ZoomableGroup
-            center={centerTarget}
-            zoom={zoomTarget}
-            minZoom={1}
-            maxZoom={40}
-            translateExtent={[[-100, -100], [MAP_W + 100, MAP_H + 100]]}
-          >
-            {/* LAYER 1 — District view */}
-            {!isDrilled && districtGeo.geography && (
-              <Geographies geography={districtGeo.geography}>
-                {({ geographies }) =>
-                  geographies.map(geo => {
-                    const name = districtMuniNameFrom(geo.properties as Record<string, unknown>);
-                    const stat = muniByName[name] ?? muniByName[normalizeName(name)];
-                    const fill = colorFor(stat?.avg_m2 ?? 0);
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => { if (name === 'Lisboa') setMunicipio(name); }}
-                        onMouseMove={e => setTip({
-                          name,
-                          m2: stat?.avg_m2 ?? 0,
-                          yoy: stat?.yoy_change ?? null,
-                          x: e.clientX, y: e.clientY,
-                        })}
-                        onMouseLeave={() => setTip(null)}
-                        style={{
-                          default: {
-                            fill,
-                            fillOpacity: 0.85,
-                            stroke: 'rgba(255,255,255,0.6)',
-                            strokeWidth: 0.6,
-                            outline: 'none',
-                            cursor: name === 'Lisboa' ? 'pointer' : 'default',
-                            transition: 'fill-opacity 200ms ease',
-                          },
-                          hover: {
-                            fill,
-                            fillOpacity: 1,
-                            stroke: '#ffffff',
-                            strokeWidth: 1.2,
-                            outline: 'none',
-                            cursor: name === 'Lisboa' ? 'pointer' : 'default',
-                            filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))',
-                          },
-                          pressed: { fill, outline: 'none' },
-                        }}
-                      />
-                    );
-                  })
-                }
-              </Geographies>
-            )}
-
-            {/* LAYER 2 — Selected muni outline backdrop */}
-            {isDrilled && selectedMuniFeature && (
-              <Geographies geography={{ type: 'FeatureCollection', features: [selectedMuniFeature] } as any}>
-                {({ geographies }) =>
-                  geographies.map(geo => (
+          {/* LAYER 1 — District view */}
+          {!isDrilled && districtGeo.geography && (
+            <Geographies geography={districtGeo.geography}>
+              {({ geographies }) =>
+                geographies.map(geo => {
+                  const name = districtMuniNameFrom(geo.properties as Record<string, unknown>);
+                  const stat = muniByName[name] ?? muniByName[normalizeName(name)];
+                  const fill = colorFor(stat?.avg_m2 ?? 0);
+                  return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
+                      onClick={() => { if (name === 'Lisboa') setMunicipio(name); }}
+                      onMouseMove={e => setTip({
+                        name,
+                        m2: stat?.avg_m2 ?? 0,
+                        yoy: stat?.yoy_change ?? null,
+                        x: e.clientX, y: e.clientY,
+                      })}
+                      onMouseLeave={() => setTip(null)}
                       style={{
                         default: {
-                          fill: hasParishShapes ? 'transparent' : 'rgba(99,102,241,0.08)',
-                          stroke: 'rgba(139,92,246,0.85)',
+                          fill,
+                          fillOpacity: 0.85,
+                          stroke: 'rgba(255,255,255,0.6)',
+                          strokeWidth: 0.6,
+                          outline: 'none',
+                          cursor: name === 'Lisboa' ? 'pointer' : 'default',
+                          transition: 'fill-opacity 200ms ease',
+                        },
+                        hover: {
+                          fill,
+                          fillOpacity: 1,
+                          stroke: '#ffffff',
                           strokeWidth: 1.2,
-                          strokeDasharray: hasParishShapes ? '0' : '4 3',
+                          outline: 'none',
+                          cursor: name === 'Lisboa' ? 'pointer' : 'default',
+                          filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))',
+                        },
+                        pressed: { fill, outline: 'none' },
+                      }}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          )}
+
+          {/* LAYER 2 — Muni outline (only when no parish shapes are available) */}
+          {isDrilled && selectedMuniFeature && !hasParishShapes && (
+            <Geographies geography={{ type: 'FeatureCollection', features: [selectedMuniFeature] } as any}>
+              {({ geographies }) =>
+                geographies.map(geo => (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    style={{
+                      default: {
+                        fill: 'rgba(99,102,241,0.06)',
+                        stroke: 'rgba(139,92,246,0.85)',
+                        strokeWidth: 1.2,
+                        strokeDasharray: '4 3',
+                        vectorEffect: 'non-scaling-stroke',
+                        outline: 'none',
+                      },
+                      hover: { outline: 'none' },
+                      pressed: { outline: 'none' },
+                    }}
+                  />
+                ))
+              }
+            </Geographies>
+          )}
+
+          {/* LAYER 3 — Parish polygons for the drilled muni */}
+          {isDrilled && hasParishShapes && (
+            <Geographies geography={{ type: 'FeatureCollection', features: parishFeaturesForMuni } as any}>
+              {({ geographies }) =>
+                geographies.map(geo => {
+                  const rawName = parishNameFrom(geo.properties as Record<string, unknown>);
+                  const stat = parishByNormName.get(normalizeName(rawName));
+                  const fill = colorFor(stat?.avg_m2 ?? 0);
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onMouseMove={e => setTip({
+                        name: rawName,
+                        m2: stat?.avg_m2 ?? 0,
+                        yoy: stat?.yoy_change ?? null,
+                        x: e.clientX, y: e.clientY,
+                      })}
+                      onMouseLeave={() => setTip(null)}
+                      style={{
+                        default: {
+                          fill,
+                          fillOpacity: 0.88,
+                          stroke: 'rgba(255,255,255,0.75)',
+                          strokeWidth: 0.6,
+                          vectorEffect: 'non-scaling-stroke',
+                          outline: 'none',
+                          cursor: 'pointer',
+                          transition: 'fill-opacity 200ms ease',
+                        },
+                        hover: {
+                          fill,
+                          fillOpacity: 1,
+                          stroke: '#ffffff',
+                          strokeWidth: 1.2,
                           vectorEffect: 'non-scaling-stroke',
                           outline: 'none',
                         },
-                        hover: { outline: 'none' },
-                        pressed: { outline: 'none' },
+                        pressed: { fill, outline: 'none' },
                       }}
                     />
-                  ))
-                }
-              </Geographies>
-            )}
-
-            {/* LAYER 3 — Parish polygons for the drilled muni */}
-            {isDrilled && hasParishShapes && (
-              <Geographies geography={{ type: 'FeatureCollection', features: parishFeaturesForMuni } as any}>
-                {({ geographies }) =>
-                  geographies.map(geo => {
-                    const rawName = parishNameFrom(geo.properties as Record<string, unknown>);
-                    const stat = parishByNormName.get(normalizeName(rawName));
-                    const fill = colorFor(stat?.avg_m2 ?? 0);
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onMouseMove={e => setTip({
-                          name: rawName,
-                          m2: stat?.avg_m2 ?? 0,
-                          yoy: stat?.yoy_change ?? null,
-                          x: e.clientX, y: e.clientY,
-                        })}
-                        onMouseLeave={() => setTip(null)}
-                        style={{
-                          default: {
-                            fill,
-                            fillOpacity: 0.88,
-                            stroke: 'rgba(255,255,255,0.75)',
-                            strokeWidth: 0.4,
-                            vectorEffect: 'non-scaling-stroke',
-                            outline: 'none',
-                            cursor: 'pointer',
-                            transition: 'fill-opacity 200ms ease',
-                          },
-                          hover: {
-                            fill,
-                            fillOpacity: 1,
-                            stroke: '#ffffff',
-                            strokeWidth: 1,
-                            vectorEffect: 'non-scaling-stroke',
-                            outline: 'none',
-                          },
-                          pressed: { fill, outline: 'none' },
-                        }}
-                      />
-                    );
-                  })
-                }
-              </Geographies>
-            )}
-          </ZoomableGroup>
+                  );
+                })
+              }
+            </Geographies>
+          )}
         </ComposableMap>
 
         {/* Chip-list fallback */}
