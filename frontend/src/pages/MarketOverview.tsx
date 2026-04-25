@@ -80,15 +80,20 @@ export function MarketOverview() {
       {/* District summary strip — always visible */}
       <DistrictSummary />
 
+      {/* Map — mobile placement (between summary and KPIs) */}
+      <div className="xl:hidden rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm dark:bg-card/40">
+        <LisbonMap />
+      </div>
+
       {/* KPI row (4 cards) */}
       <MetricCards />
 
-      {/* Chart + Map grid */}
+      {/* Chart + Map grid (map only renders here on desktop) */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
         <div className="xl:col-span-3">
           <PriceChart />
         </div>
-        <div className="xl:col-span-2">
+        <div className="hidden xl:col-span-2 xl:block">
           <div className="h-full rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur-sm dark:bg-card/40">
             <LisbonMap />
           </div>

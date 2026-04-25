@@ -541,11 +541,11 @@ export function Compare() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs table-fixed">
+              <table className="w-full min-w-[640px] text-xs table-fixed">
                 <colgroup>
-                  <col style={{ width: '200px' }} />
+                  <col style={{ width: '180px' }} />
                   {selectedStats.map(s => (
-                    <col key={s.name} />
+                    <col key={s.name} style={{ minWidth: '140px' }} />
                   ))}
                 </colgroup>
                 <thead>
@@ -620,7 +620,8 @@ export function Compare() {
                       tick={{ fill: textColor, fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
-                      interval={5}
+                      interval="preserveStartEnd"
+                      minTickGap={40}
                     />
                     <YAxis
                       tickFormatter={v => `€${Math.round(v / 100) * 100}`}

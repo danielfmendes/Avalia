@@ -762,12 +762,12 @@ export function Signals() {
                 return (
                   <div
                     key={cfg.id}
-                    className="flex items-center justify-between gap-3 border-t border-border/30 py-2 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
+                    className="flex flex-col items-start gap-1 border-t border-border/30 py-2 first:border-t-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:[&:nth-child(2)]:border-t-0"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: cfg.color }} />
                       <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate text-xs font-medium">{cfg.short}</span>
+                      <span className="text-xs font-medium">{cfg.short}</span>
                     </div>
                     {noData ? (
                       <span className="text-[10px] text-muted-foreground/70">no data for scope</span>
@@ -781,7 +781,7 @@ export function Signals() {
                         )}>
                           {stat.change >= 0 ? '+' : ''}{stat.change.toFixed(1)}%
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
                           ρ {stat.correlation.toFixed(2)}
                           <span className="ml-1 text-[10px] text-muted-foreground/60">
                             {describeCorrelation(stat.correlation)}

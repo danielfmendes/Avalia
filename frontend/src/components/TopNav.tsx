@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useDashboard } from '@/context/DashboardContext';
 import { ModeToggle } from '@/components/mode-toggle';
 import { useTheme } from "@/components/theme-provider";
 import {
-  BarChart3, Sparkles, GitCompareArrows, BedDouble, Wallet, History, Activity,
+  BarChart3, Sparkles, GitCompareArrows, BedDouble, Wallet, History, Activity, Menu, X,
 } from 'lucide-react';
 import type { Page } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'time-machine',    label: 'Time Machine', icon: <History className="h-3.5 w-3.5" /> },
 ];
 
+
 function NavTabs() {
   const { page, setPage } = useDashboard();
   return (
@@ -70,7 +72,75 @@ function NavTabs() {
   );
 }
 
+function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { page, setPage } = useDashboard();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 md:hidden">
+      <div
+        className="absolute inset-0 bg-foreground/40 backdrop-blur-md"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div className="absolute inset-x-3 top-3 rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Logo />
+          <button
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/80 hover:text-foreground"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="border-t border-border/40 p-2">
+          <nav className="flex flex-col">
+            {NAV_ITEMS.map(item => {
+              const active = page === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setPage(item.id);
+                    onClose();
+                  }}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-background/80 text-foreground ring-1 ring-border/60 shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                  )}
+                >
+                  <span className="[&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TopNav() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
       {/* Desktop / tablet — three-column layout so the nav sits in the true center */}
@@ -86,18 +156,25 @@ export function TopNav() {
         </div>
       </div>
 
-      {/* Mobile — logo + toggle, nav scrolls below */}
+      {/* Mobile — logo + hamburger + theme toggle */}
       <div className="md:hidden">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <Logo />
-          <ModeToggle />
-        </div>
-        <div className="border-t border-border/40 overflow-x-auto">
-          <div className="flex items-center justify-center px-3 py-2">
-            <NavTabs />
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/80 backdrop-blur-xl hover:text-foreground"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+            >
+              <Menu className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
+
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </header>
   );
 }

@@ -23,6 +23,18 @@ function useIsDark() {
   return isDark;
 }
 
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < breakpoint,
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 // Consistent, ordered list of bedroom categories found in the schema.
 const ROOM_ORDER = ['T0', 'T1', 'T2', 'T3', 'T4+'] as const;
 type RoomKey = typeof ROOM_ORDER[number];
@@ -159,6 +171,7 @@ function YoyPill({ value }: { value: number }) {
 export function Rooms() {
   const { districtData, tipoVenda } = useDashboard();
   const isDark = useIsDark();
+  const isMobile = useIsMobile();
 
   const rooms = useMemo(
     () => summariseRooms(districtData, tipoVenda),
@@ -190,8 +203,25 @@ export function Rooms() {
       .map(([municipio, rm]) => {
         const total = Array.from(rm.values()).reduce((s, v) => s + v, 0);
         const row: Record<string, string | number> = { municipio, total };
-        for (const k of ROOM_ORDER) {
-          row[k] = total > 0 ? Math.round(((rm.get(k) ?? 0) / total) * 100) : 0;
+        // Largest-remainder rounding: floor each percent then distribute the
+        // leftover whole points to the buckets with the largest fractional
+        // parts. Without this, independent Math.round on 5 values can sum
+        // to 99–101 and the chart shows a "101%" axis tick.
+        if (total > 0) {
+          const exact = ROOM_ORDER.map(k => ((rm.get(k) ?? 0) / total) * 100);
+          const floored = exact.map(v => Math.floor(v));
+          let remainder = 100 - floored.reduce((s, v) => s + v, 0);
+          const order = exact
+            .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+            .sort((a, b) => b.frac - a.frac);
+          for (const { i } of order) {
+            if (remainder <= 0) break;
+            floored[i] += 1;
+            remainder -= 1;
+          }
+          ROOM_ORDER.forEach((k, i) => { row[k] = floored[i]; });
+        } else {
+          for (const k of ROOM_ORDER) row[k] = 0;
         }
         return row;
       })
@@ -301,7 +331,8 @@ export function Rooms() {
                       tick={{ fill: textColor, fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
-                      interval={5}
+                      interval="preserveStartEnd"
+                      minTickGap={40}
                     />
                     <YAxis
                       tickFormatter={v => `€${v}`}
@@ -354,12 +385,14 @@ export function Rooms() {
                   <BarChart
                     data={muniMix}
                     layout="vertical"
-                    margin={{ top: 5, right: 20, left: 40, bottom: 5 }}
+                    margin={{ top: 5, right: isMobile ? 8 : 20, left: 0, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
                     <XAxis
                       type="number"
                       domain={[0, 100]}
+                      ticks={isMobile ? [0, 50, 100] : [0, 25, 50, 75, 100]}
+                      allowDataOverflow
                       tickFormatter={v => `${v}%`}
                       tick={{ fill: textColor, fontSize: 10 }}
                       axisLine={false}
@@ -371,7 +404,7 @@ export function Rooms() {
                       tick={{ fill: textColor, fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
-                      width={100}
+                      width={isMobile ? 70 : 100}
                     />
                     <Tooltip
                       contentStyle={{

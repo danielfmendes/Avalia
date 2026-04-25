@@ -196,7 +196,7 @@ export function AIPredictions() {
       </div>
 
       {/* Forecast summary cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="text-xs text-muted-foreground">Current ({splitMesAno})</div>
@@ -255,7 +255,8 @@ export function AIPredictions() {
                   tick={{ fill: textColor, fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
-                  interval={5}
+                  interval="preserveStartEnd"
+                  minTickGap={40}
                 />
                 <YAxis
                   tickFormatter={v => formatVal(v)}
@@ -372,8 +373,8 @@ export function AIPredictions() {
           </div>
           <Card>
             <CardContent className="p-0">
-              <div className="max-h-[520px] overflow-y-auto">
-                <table className="w-full text-xs">
+              <div className="max-h-[520px] overflow-x-auto overflow-y-auto">
+                <table className="w-full min-w-[560px] text-xs">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur">
                     <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b">
                       <th className="pb-2 pl-4 pt-3 text-left">Municipality</th>

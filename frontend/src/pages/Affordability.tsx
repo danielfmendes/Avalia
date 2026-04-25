@@ -261,7 +261,7 @@ export function Affordability() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
             <div className="rounded-xl border border-border/60 bg-background/60 p-3">
               <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <Home className="h-3 w-3" />
