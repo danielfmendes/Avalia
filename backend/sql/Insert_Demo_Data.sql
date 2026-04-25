@@ -1,0 +1,15 @@
+INSERT INTO habitacao (mes_ano,
+                       tipo_venda,
+                       tipo_habitacao,
+                       quartos,
+                       distrito,
+                       municipio,
+                       freguesia,
+                       total_rows,
+                       avg_area,
+                       avg_preco,
+                       avg_m2)
+VALUES ('2024-12', 'compra', 'apartamento', '2.0', 'Lisboa', 'Lisboa', 'Marvila', 15, 80.0, 560000.0, 7000.0),
+       ('2025-12', 'compra', 'apartamento', '2.0', 'Lisboa', 'Lisboa', 'Marvila', 12, 85.0, 493850.0, 5810.0),
+       ('2024-12', 'compra', 'apartamento', '2.0', 'Lisboa', 'Lisboa', 'Beato', 18, 75.0, 322500.0, 4300.0),
+       ('2025-12', 'compra', 'apartamento', '2.0', 'Lisboa', 'Lisboa', 'Beato', 10, 80.0, 454080.0, 5676.0);

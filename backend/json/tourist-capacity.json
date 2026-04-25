@@ -1,0 +1,1122 @@
+[
+  {
+    "municipio": "Amadora",
+    "year": 2009,
+    "tourist_capacity": 151
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2010,
+    "tourist_capacity": 441
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2011,
+    "tourist_capacity": 409
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2012,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2013,
+    "tourist_capacity": 398
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2015,
+    "tourist_capacity": 604
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2016,
+    "tourist_capacity": 644
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2017,
+    "tourist_capacity": 644
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2018,
+    "tourist_capacity": 620
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2020,
+    "tourist_capacity": 588
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2021,
+    "tourist_capacity": 686
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2022,
+    "tourist_capacity": 686
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2023,
+    "tourist_capacity": 686
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2024,
+    "tourist_capacity": 668
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2009,
+    "tourist_capacity": 704
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2010,
+    "tourist_capacity": 712
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2011,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2012,
+    "tourist_capacity": 346
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2013,
+    "tourist_capacity": 361
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2015,
+    "tourist_capacity": 381
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2016,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2017,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2020,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2022,
+    "tourist_capacity": 588
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2023,
+    "tourist_capacity": 612
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2024,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2009,
+    "tourist_capacity": 7272
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2010,
+    "tourist_capacity": 7526
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2011,
+    "tourist_capacity": 8097
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2012,
+    "tourist_capacity": 8223
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2013,
+    "tourist_capacity": 7377
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2015,
+    "tourist_capacity": 7707
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2016,
+    "tourist_capacity": 7725
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2017,
+    "tourist_capacity": 8010
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2018,
+    "tourist_capacity": 8536
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2020,
+    "tourist_capacity": 8516
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2021,
+    "tourist_capacity": 8937
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2022,
+    "tourist_capacity": 6772
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2023,
+    "tourist_capacity": 7304
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2024,
+    "tourist_capacity": 8529
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2009,
+    "tourist_capacity": 8841
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2010,
+    "tourist_capacity": 8772
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2011,
+    "tourist_capacity": 4691
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2012,
+    "tourist_capacity": 4803
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2013,
+    "tourist_capacity": 5437
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2015,
+    "tourist_capacity": 5386
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2016,
+    "tourist_capacity": 4701
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2017,
+    "tourist_capacity": 4761
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2018,
+    "tourist_capacity": 4910
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2020,
+    "tourist_capacity": 5014
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2021,
+    "tourist_capacity": 5142
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2022,
+    "tourist_capacity": 4851
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2023,
+    "tourist_capacity": 4589
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2024,
+    "tourist_capacity": 3190
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2009,
+    "tourist_capacity": 35307
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2010,
+    "tourist_capacity": 35258
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2011,
+    "tourist_capacity": 35618
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2012,
+    "tourist_capacity": 35890
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2013,
+    "tourist_capacity": 38233
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2015,
+    "tourist_capacity": 43505
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2016,
+    "tourist_capacity": 47627
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2017,
+    "tourist_capacity": 51627
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2018,
+    "tourist_capacity": 55598
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2020,
+    "tourist_capacity": 59428
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2021,
+    "tourist_capacity": 65156
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2022,
+    "tourist_capacity": 37461
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2023,
+    "tourist_capacity": 52108
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2024,
+    "tourist_capacity": 67283
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2009,
+    "tourist_capacity": 71156
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2010,
+    "tourist_capacity": 73957
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2011,
+    "tourist_capacity": 28399
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2012,
+    "tourist_capacity": 28991
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2013,
+    "tourist_capacity": 29385
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2015,
+    "tourist_capacity": 29710
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2016,
+    "tourist_capacity": 32963
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2017,
+    "tourist_capacity": 34631
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2018,
+    "tourist_capacity": 36728
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2020,
+    "tourist_capacity": 39779
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2021,
+    "tourist_capacity": 41443
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2022,
+    "tourist_capacity": 41949
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2023,
+    "tourist_capacity": 43985
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2024,
+    "tourist_capacity": 25717
+  },
+  {
+    "municipio": "Loures",
+    "year": 2009,
+    "tourist_capacity": 312
+  },
+  {
+    "municipio": "Loures",
+    "year": 2010,
+    "tourist_capacity": 637
+  },
+  {
+    "municipio": "Loures",
+    "year": 2011,
+    "tourist_capacity": 552
+  },
+  {
+    "municipio": "Loures",
+    "year": 2012,
+    "tourist_capacity": 646
+  },
+  {
+    "municipio": "Loures",
+    "year": 2013,
+    "tourist_capacity": 644
+  },
+  {
+    "municipio": "Loures",
+    "year": 2015,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2016,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2017,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2018,
+    "tourist_capacity": 675
+  },
+  {
+    "municipio": "Loures",
+    "year": 2020,
+    "tourist_capacity": 684
+  },
+  {
+    "municipio": "Loures",
+    "year": 2021,
+    "tourist_capacity": 696
+  },
+  {
+    "municipio": "Loures",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Loures",
+    "year": 2023,
+    "tourist_capacity": 1211
+  },
+  {
+    "municipio": "Loures",
+    "year": 2024,
+    "tourist_capacity": 1264
+  },
+  {
+    "municipio": "Loures",
+    "year": 2009,
+    "tourist_capacity": 1266
+  },
+  {
+    "municipio": "Loures",
+    "year": 2010,
+    "tourist_capacity": 1327
+  },
+  {
+    "municipio": "Loures",
+    "year": 2011,
+    "tourist_capacity": 312
+  },
+  {
+    "municipio": "Loures",
+    "year": 2012,
+    "tourist_capacity": 637
+  },
+  {
+    "municipio": "Loures",
+    "year": 2013,
+    "tourist_capacity": 552
+  },
+  {
+    "municipio": "Loures",
+    "year": 2015,
+    "tourist_capacity": 646
+  },
+  {
+    "municipio": "Loures",
+    "year": 2016,
+    "tourist_capacity": 644
+  },
+  {
+    "municipio": "Loures",
+    "year": 2017,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2018,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2020,
+    "tourist_capacity": 731
+  },
+  {
+    "municipio": "Loures",
+    "year": 2021,
+    "tourist_capacity": 675
+  },
+  {
+    "municipio": "Loures",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Loures",
+    "year": 2023,
+    "tourist_capacity": 675
+  },
+  {
+    "municipio": "Loures",
+    "year": 2024,
+    "tourist_capacity": 675
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2009,
+    "tourist_capacity": 643
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2010,
+    "tourist_capacity": 619
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2011,
+    "tourist_capacity": 619
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2012,
+    "tourist_capacity": 678
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2013,
+    "tourist_capacity": 636
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2015,
+    "tourist_capacity": 803
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2016,
+    "tourist_capacity": 995
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2017,
+    "tourist_capacity": 1162
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2018,
+    "tourist_capacity": 1391
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2020,
+    "tourist_capacity": 1685
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2021,
+    "tourist_capacity": 2270
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2022,
+    "tourist_capacity": 1864
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2023,
+    "tourist_capacity": 2189
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2024,
+    "tourist_capacity": 2392
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2009,
+    "tourist_capacity": 2536
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2010,
+    "tourist_capacity": 2505
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2011,
+    "tourist_capacity": 552
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2012,
+    "tourist_capacity": 532
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2013,
+    "tourist_capacity": 534
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2015,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2016,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2017,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2020,
+    "tourist_capacity": 541
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2023,
+    "tourist_capacity": 541
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2024,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2009,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2010,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2011,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2012,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2013,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2015,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2016,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2017,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2020,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2023,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2024,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2009,
+    "tourist_capacity": 34
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2010,
+    "tourist_capacity": 43
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2011,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2012,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2013,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2015,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2016,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2017,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2020,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2023,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2024,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2009,
+    "tourist_capacity": 1496
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2010,
+    "tourist_capacity": 1554
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2011,
+    "tourist_capacity": 1538
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2012,
+    "tourist_capacity": 1984
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2013,
+    "tourist_capacity": 2060
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2015,
+    "tourist_capacity": 2228
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2016,
+    "tourist_capacity": 2021
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2017,
+    "tourist_capacity": 1940
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2018,
+    "tourist_capacity": 1937
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2020,
+    "tourist_capacity": 1888
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2021,
+    "tourist_capacity": 2022
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2022,
+    "tourist_capacity": 1749
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2023,
+    "tourist_capacity": 2078
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2024,
+    "tourist_capacity": 2254
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2009,
+    "tourist_capacity": 2616
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2010,
+    "tourist_capacity": 2763
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2011,
+    "tourist_capacity": 1153
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2012,
+    "tourist_capacity": 1205
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2013,
+    "tourist_capacity": 1189
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2015,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2016,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2017,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2020,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2022,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2023,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2024,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2009,
+    "tourist_capacity": 1396
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2010,
+    "tourist_capacity": 1415
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2011,
+    "tourist_capacity": 1761
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2012,
+    "tourist_capacity": 1692
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2013,
+    "tourist_capacity": 1872
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2015,
+    "tourist_capacity": 2231
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2016,
+    "tourist_capacity": 2456
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2017,
+    "tourist_capacity": 2639
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2018,
+    "tourist_capacity": 3027
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2020,
+    "tourist_capacity": 3474
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2021,
+    "tourist_capacity": 3849
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2022,
+    "tourist_capacity": 2586
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2023,
+    "tourist_capacity": 3489
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2024,
+    "tourist_capacity": 3631
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2009,
+    "tourist_capacity": 3783
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2010,
+    "tourist_capacity": 3916
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2011,
+    "tourist_capacity": 1159
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2012,
+    "tourist_capacity": 1186
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2013,
+    "tourist_capacity": 1601
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2015,
+    "tourist_capacity": 1446
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2016,
+    "tourist_capacity": 1555
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2017,
+    "tourist_capacity": 1531
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2018,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2020,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2021,
+    "tourist_capacity": 0
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2022,
+    "tourist_capacity": 1558
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2023,
+    "tourist_capacity": 1647
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2024,
+    "tourist_capacity": 0
+  }
+]

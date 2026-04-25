@@ -1,0 +1,857 @@
+[
+  {
+    "municipio": "Amadora",
+    "year": 1985,
+    "monthly_earnings": 1805
+  },
+  {
+    "municipio": "Amadora",
+    "year": 1991,
+    "monthly_earnings": 4401
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2002,
+    "monthly_earnings": 10187
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2009,
+    "monthly_earnings": 12516
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2010,
+    "monthly_earnings": 11957
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2011,
+    "monthly_earnings": 12494
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2012,
+    "monthly_earnings": 12794
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2013,
+    "monthly_earnings": 12703
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2014,
+    "monthly_earnings": 12894
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2015,
+    "monthly_earnings": 12836
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2016,
+    "monthly_earnings": 1324
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2017,
+    "monthly_earnings": 13504
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2018,
+    "monthly_earnings": 13878
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2019,
+    "monthly_earnings": 14255
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2020,
+    "monthly_earnings": 14768
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2021,
+    "monthly_earnings": 15673
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2022,
+    "monthly_earnings": 16119
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2023,
+    "monthly_earnings": 17348
+  },
+  {
+    "municipio": "Amadora",
+    "year": 2024,
+    "monthly_earnings": 18854
+  },
+  {
+    "municipio": "Cascais",
+    "year": 1985,
+    "monthly_earnings": 1627
+  },
+  {
+    "municipio": "Cascais",
+    "year": 1991,
+    "monthly_earnings": 4207
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2002,
+    "monthly_earnings": 8818
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2009,
+    "monthly_earnings": 11095
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2010,
+    "monthly_earnings": 1180
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2011,
+    "monthly_earnings": 11719
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2012,
+    "monthly_earnings": 11612
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2013,
+    "monthly_earnings": 11611
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2014,
+    "monthly_earnings": 11572
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2015,
+    "monthly_earnings": 11519
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2016,
+    "monthly_earnings": 11603
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2017,
+    "monthly_earnings": 11561
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2018,
+    "monthly_earnings": 11836
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2019,
+    "monthly_earnings": 12155
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2020,
+    "monthly_earnings": 12642
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2021,
+    "monthly_earnings": 12937
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2022,
+    "monthly_earnings": 13467
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2023,
+    "monthly_earnings": 14498
+  },
+  {
+    "municipio": "Cascais",
+    "year": 2024,
+    "monthly_earnings": 15322
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 1985,
+    "monthly_earnings": 2256
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 1991,
+    "monthly_earnings": 5766
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2002,
+    "monthly_earnings": 12486
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2009,
+    "monthly_earnings": 15088
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2010,
+    "monthly_earnings": 15752
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2011,
+    "monthly_earnings": 15764
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2012,
+    "monthly_earnings": 15906
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2013,
+    "monthly_earnings": 15749
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2014,
+    "monthly_earnings": 15606
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2015,
+    "monthly_earnings": 15489
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2016,
+    "monthly_earnings": 15519
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2017,
+    "monthly_earnings": 15792
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2018,
+    "monthly_earnings": 16161
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2019,
+    "monthly_earnings": 16694
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2020,
+    "monthly_earnings": 17028
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2021,
+    "monthly_earnings": 1752
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2022,
+    "monthly_earnings": 18563
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2023,
+    "monthly_earnings": 19856
+  },
+  {
+    "municipio": "Lisboa",
+    "year": 2024,
+    "monthly_earnings": 21209
+  },
+  {
+    "municipio": "Loures",
+    "year": 1985,
+    "monthly_earnings": 1726
+  },
+  {
+    "municipio": "Loures",
+    "year": 1991,
+    "monthly_earnings": 4121
+  },
+  {
+    "municipio": "Loures",
+    "year": 2002,
+    "monthly_earnings": 9081
+  },
+  {
+    "municipio": "Loures",
+    "year": 2009,
+    "monthly_earnings": 10628
+  },
+  {
+    "municipio": "Loures",
+    "year": 2010,
+    "monthly_earnings": 1097
+  },
+  {
+    "municipio": "Loures",
+    "year": 2011,
+    "monthly_earnings": 11093
+  },
+  {
+    "municipio": "Loures",
+    "year": 2012,
+    "monthly_earnings": 11378
+  },
+  {
+    "municipio": "Loures",
+    "year": 2013,
+    "monthly_earnings": 11255
+  },
+  {
+    "municipio": "Loures",
+    "year": 2014,
+    "monthly_earnings": 11283
+  },
+  {
+    "municipio": "Loures",
+    "year": 2015,
+    "monthly_earnings": 11385
+  },
+  {
+    "municipio": "Loures",
+    "year": 2016,
+    "monthly_earnings": 11488
+  },
+  {
+    "municipio": "Loures",
+    "year": 2017,
+    "monthly_earnings": 11599
+  },
+  {
+    "municipio": "Loures",
+    "year": 2018,
+    "monthly_earnings": 11843
+  },
+  {
+    "municipio": "Loures",
+    "year": 2019,
+    "monthly_earnings": 12186
+  },
+  {
+    "municipio": "Loures",
+    "year": 2020,
+    "monthly_earnings": 12562
+  },
+  {
+    "municipio": "Loures",
+    "year": 2021,
+    "monthly_earnings": 12854
+  },
+  {
+    "municipio": "Loures",
+    "year": 2022,
+    "monthly_earnings": 13535
+  },
+  {
+    "municipio": "Loures",
+    "year": 2023,
+    "monthly_earnings": 14403
+  },
+  {
+    "municipio": "Loures",
+    "year": 2024,
+    "monthly_earnings": 15267
+  },
+  {
+    "municipio": "Mafra",
+    "year": 1985,
+    "monthly_earnings": 1377
+  },
+  {
+    "municipio": "Mafra",
+    "year": 1991,
+    "monthly_earnings": 3371
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2002,
+    "monthly_earnings": 6537
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2009,
+    "monthly_earnings": 8636
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2010,
+    "monthly_earnings": 898
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2011,
+    "monthly_earnings": 8889
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2012,
+    "monthly_earnings": 8898
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2013,
+    "monthly_earnings": 8925
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2014,
+    "monthly_earnings": 8965
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2015,
+    "monthly_earnings": 8939
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2016,
+    "monthly_earnings": 9053
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2017,
+    "monthly_earnings": 930
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2018,
+    "monthly_earnings": 9735
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2019,
+    "monthly_earnings": 1022
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2020,
+    "monthly_earnings": 10677
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2021,
+    "monthly_earnings": 11117
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2022,
+    "monthly_earnings": 11634
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2023,
+    "monthly_earnings": 12561
+  },
+  {
+    "municipio": "Mafra",
+    "year": 2024,
+    "monthly_earnings": 13414
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 1985,
+    "monthly_earnings": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 1991,
+    "monthly_earnings": 0
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2002,
+    "monthly_earnings": 7186
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2009,
+    "monthly_earnings": 8604
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2010,
+    "monthly_earnings": 9095
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2011,
+    "monthly_earnings": 9141
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2012,
+    "monthly_earnings": 9262
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2013,
+    "monthly_earnings": 9144
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2014,
+    "monthly_earnings": 9157
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2015,
+    "monthly_earnings": 894
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2016,
+    "monthly_earnings": 9135
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2017,
+    "monthly_earnings": 9287
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2018,
+    "monthly_earnings": 9378
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2019,
+    "monthly_earnings": 9872
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2020,
+    "monthly_earnings": 10036
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2021,
+    "monthly_earnings": 10455
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2022,
+    "monthly_earnings": 10951
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2023,
+    "monthly_earnings": 11859
+  },
+  {
+    "municipio": "Odivelas",
+    "year": 2024,
+    "monthly_earnings": 12559
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 1985,
+    "monthly_earnings": 1814
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 1991,
+    "monthly_earnings": 4807
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2002,
+    "monthly_earnings": 13476
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2009,
+    "monthly_earnings": 16925
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2010,
+    "monthly_earnings": 17313
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2011,
+    "monthly_earnings": 17212
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2012,
+    "monthly_earnings": 17049
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2013,
+    "monthly_earnings": 1680
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2014,
+    "monthly_earnings": 16739
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2015,
+    "monthly_earnings": 17325
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2016,
+    "monthly_earnings": 16989
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2017,
+    "monthly_earnings": 17402
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2018,
+    "monthly_earnings": 17915
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2019,
+    "monthly_earnings": 17482
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2020,
+    "monthly_earnings": 18398
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2021,
+    "monthly_earnings": 19013
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2022,
+    "monthly_earnings": 20199
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2023,
+    "monthly_earnings": 21048
+  },
+  {
+    "municipio": "Oeiras",
+    "year": 2024,
+    "monthly_earnings": 22144
+  },
+  {
+    "municipio": "Sintra",
+    "year": 1985,
+    "monthly_earnings": 1685
+  },
+  {
+    "municipio": "Sintra",
+    "year": 1991,
+    "monthly_earnings": 4191
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2002,
+    "monthly_earnings": 8514
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2009,
+    "monthly_earnings": 11129
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2010,
+    "monthly_earnings": 11445
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2011,
+    "monthly_earnings": 11596
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2012,
+    "monthly_earnings": 11818
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2013,
+    "monthly_earnings": 11891
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2014,
+    "monthly_earnings": 11879
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2015,
+    "monthly_earnings": 11607
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2016,
+    "monthly_earnings": 11666
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2017,
+    "monthly_earnings": 11809
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2018,
+    "monthly_earnings": 11839
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2019,
+    "monthly_earnings": 12207
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2020,
+    "monthly_earnings": 12554
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2021,
+    "monthly_earnings": 1294
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2022,
+    "monthly_earnings": 13547
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2023,
+    "monthly_earnings": 14395
+  },
+  {
+    "municipio": "Sintra",
+    "year": 2024,
+    "monthly_earnings": 15311
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 1985,
+    "monthly_earnings": 2009
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 1991,
+    "monthly_earnings": 459
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2002,
+    "monthly_earnings": 8908
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2009,
+    "monthly_earnings": 10978
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2010,
+    "monthly_earnings": 11158
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2011,
+    "monthly_earnings": 11295
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2012,
+    "monthly_earnings": 11485
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2013,
+    "monthly_earnings": 11488
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2014,
+    "monthly_earnings": 11131
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2015,
+    "monthly_earnings": 11267
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2016,
+    "monthly_earnings": 11603
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2017,
+    "monthly_earnings": 11904
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2018,
+    "monthly_earnings": 12164
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2019,
+    "monthly_earnings": 12456
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2020,
+    "monthly_earnings": 12733
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2021,
+    "monthly_earnings": 13156
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2022,
+    "monthly_earnings": 13884
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2023,
+    "monthly_earnings": 14752
+  },
+  {
+    "municipio": "Vila Franca de Xira",
+    "year": 2024,
+    "monthly_earnings": 15592
+  }
+]
