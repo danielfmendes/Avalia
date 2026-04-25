@@ -1,43 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
+import { geoMercator, geoPath, type GeoPermissibleObjects } from 'd3-geo';
 import { ArrowLeft, Info, Loader2, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboard } from '@/context/DashboardContext';
 import { useGeography } from '@/hooks/useGeography';
 import { getFreguesiaStats, getMunicipioStats, type FreguesiaStat } from '@/lib/dataUtils';
 import {
-  boundsCenter,
   districtMuniNameFrom,
-  featureBounds,
   muniNameFrom,
   MUNI_GEO_URL,
   normalizeName,
   PARISH_GEO_URL,
   parishNameFrom,
+  type BoundedFeature,
 } from '@/lib/mapUtils';
 
 const MAP_W = 480;
-const MAP_H = 420;
-const HOME_CENTER: [number, number] = [-9.1, 38.82];
-const HOME_SCALE = 38000;
-
-// Pick a d3 Mercator `scale` so `bounds` fits the map card with some padding.
-// d3-geo Mercator: x_px = scale·(λ−λ0), y_px ≈ scale·Δφ/cos(φ) — both in radians.
-// Normalizing the latitude span by cosLat lets us reduce to a single degPerPx
-// axis and invert for the scale.
-function scaleForBounds(
-  b: { minLng: number; maxLng: number; minLat: number; maxLat: number },
-  paddingRatio = 0.85,
-): number {
-  const midLat = (b.minLat + b.maxLat) / 2;
-  const cosLat = Math.cos((midLat * Math.PI) / 180);
-  const spanLng = Math.max(b.maxLng - b.minLng, 0.0001);
-  const spanLat = Math.max(b.maxLat - b.minLat, 0.0001) / cosLat;
-  const degPerPxLng = spanLng / (MAP_W * paddingRatio);
-  const degPerPxLat = spanLat / (MAP_H * paddingRatio);
-  const degPerPx = Math.max(degPerPxLng, degPerPxLat);
-  return (180 / Math.PI) / degPerPx;
-}
+const MAP_H = 520;
+const PADDING = 12;
 
 function lerpColor(t: number): string {
   const clamped = Math.max(0, Math.min(1, t));
@@ -60,8 +40,36 @@ function lerpColor(t: number): string {
 }
 
 const fmtEur = (v: number) => `€${Math.round(v).toLocaleString('pt-PT')}`;
+const fmtInt = (v: number) => v.toLocaleString('pt-PT');
 
-interface Tip { name: string; m2: number; yoy: number | null; x: number; y: number; }
+interface Tip {
+  name: string;
+  m2: number;
+  yoy: number | null;
+  listings: number | null;
+  clickable: boolean;
+  /** Cursor position relative to the map container (px). */
+  x: number;
+  y: number;
+}
+
+// Build a Mercator projection that fits the given features into the viewport.
+function buildPath(features: BoundedFeature[]) {
+  const projection = geoMercator();
+  const fc: GeoPermissibleObjects = {
+    type: 'FeatureCollection',
+    // d3-geo ignores extra props; we just need geometry.
+    features: features as unknown as GeoJSON.Feature[],
+  } as unknown as GeoPermissibleObjects;
+  projection.fitExtent(
+    [
+      [PADDING, PADDING],
+      [MAP_W - PADDING, MAP_H - PADDING],
+    ],
+    fc,
+  );
+  return geoPath(projection);
+}
 
 export function LisbonMap() {
   const {
@@ -73,11 +81,7 @@ export function LisbonMap() {
     isDrillLoading,
   } = useDashboard();
 
-  // ── Stats
-  // Muni stats always computed from district data. parishStats computed from
-  // drillData, which the context refetched specifically for this drill.
   const muniStats = useMemo(() => getMunicipioStats(districtData), [districtData]);
-  // Index by both exact name AND normalized name for robust GeoJSON ↔ DB joins.
   const muniByName = useMemo(() => {
     const m: Record<string, (typeof muniStats)[number]> = {};
     for (const s of muniStats) {
@@ -97,9 +101,7 @@ export function LisbonMap() {
     return m;
   }, [parishStats]);
 
-  // ── Color scale — drop obviously-bad low rows (under €500/m² is a data-quality
-  //    artifact, not a real Lisboa parish), then span the remaining min→max so
-  //    every parish lands somewhere meaningful on the green→red gradient.
+  // Color scale — drop obviously-bad low rows so €/m² gradient isn't compressed.
   const [levelMin, levelMax] = useMemo(() => {
     const source = drilldown.municipio
       ? parishStats.map(p => p.avg_m2)
@@ -109,21 +111,10 @@ export function LisbonMap() {
     return [Math.min(...clean), Math.max(...clean)];
   }, [drilldown.municipio, parishStats, muniStats]);
 
-  // ── Geographies
   const districtGeo = useGeography(MUNI_GEO_URL);
   const parishGeo = useGeography(drilldown.municipio ? PARISH_GEO_URL : null);
 
-  const selectedMuniFeature = useMemo(() => {
-    if (!drilldown.municipio || !districtGeo.geography) return null;
-    const target = normalizeName(drilldown.municipio);
-    return (
-      districtGeo.geography.features.find(
-        f => normalizeName(districtMuniNameFrom(f.properties as Record<string, unknown>)) === target,
-      ) ?? null
-    );
-  }, [districtGeo.geography, drilldown.municipio]);
-
-  // Filter the single parish file down to the currently-drilled municipality.
+  // Filter the parish file down to the currently-drilled municipality.
   const parishFeaturesForMuni = useMemo(() => {
     if (!drilldown.municipio || !parishGeo.geography) return [];
     const target = normalizeName(drilldown.municipio);
@@ -133,35 +124,31 @@ export function LisbonMap() {
     });
   }, [parishGeo.geography, drilldown.municipio]);
 
-  // Re-project the map whenever the drill state changes. At district level we
-  // use the hard-coded HOME values; when drilled, fit the selected muni bounds
-  // into the viewport directly. No ZoomableGroup → no weird transform stacking.
-  const { projScale, projCenter } = useMemo(() => {
-    if (!selectedMuniFeature) {
-      return { projScale: HOME_SCALE, projCenter: HOME_CENTER };
-    }
-    const b = featureBounds(selectedMuniFeature);
-    if (!b) return { projScale: HOME_SCALE, projCenter: HOME_CENTER };
-    return {
-      projScale: scaleForBounds(b, 0.88),
-      projCenter: boundsCenter(b) as [number, number],
-    };
-  }, [selectedMuniFeature]);
-
-  const [tip, setTip] = useState<Tip | null>(null);
-  useEffect(() => { setTip(null); }, [drilldown.municipio]);
-
   const isDrilled = !!drilldown.municipio;
   const hasParishShapes = isDrilled && parishFeaturesForMuni.length > 0;
   const parishGeoUnavailable =
     isDrilled && (parishGeo.status === 'missing' || parishGeo.status === 'error');
-  // Show the chip-list fallback when: (a) file missing, or (b) file loaded
-  // but contains no features for this muni (mismatched source).
   const showChipFallback =
     isDrilled
     && parishGeo.status !== 'loading'
     && !hasParishShapes
     && parishStats.length > 0;
+
+  // Pick the active feature set + path generator.
+  const { activeFeatures, pathGen } = useMemo(() => {
+    if (isDrilled && hasParishShapes) {
+      const fs = parishFeaturesForMuni;
+      return { activeFeatures: fs, pathGen: buildPath(fs) };
+    }
+    if (districtGeo.geography) {
+      const fs = districtGeo.geography.features;
+      return { activeFeatures: fs, pathGen: buildPath(fs) };
+    }
+    return { activeFeatures: [] as BoundedFeature[], pathGen: null };
+  }, [isDrilled, hasParishShapes, parishFeaturesForMuni, districtGeo.geography]);
+
+  const [tip, setTip] = useState<Tip | null>(null);
+  useEffect(() => { setTip(null); }, [drilldown.municipio]);
 
   function colorFor(value: number): string {
     if (value <= 0 || levelMax === levelMin) return 'rgba(148,163,184,0.4)';
@@ -185,7 +172,7 @@ export function LisbonMap() {
                   : isDrillLoading
                     ? 'Fetching parish data…'
                     : 'Parishes not yet mapped for this municipality'
-              : 'Hover a municipality to inspect'}
+              : 'Hover a municipality to inspect · click Lisboa to drill in'}
           </div>
         </div>
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -193,8 +180,13 @@ export function LisbonMap() {
         </div>
       </div>
 
-      {/* Map surface */}
-      <div className="relative rounded-xl border border-border/70 overflow-hidden bg-gradient-to-br from-muted/30 to-background">
+      {/* Map surface — outer wrapper is `relative` (so the tooltip can be
+          absolutely positioned against it) but does NOT clip overflow, while
+          the inner wrapper handles the visual rounded-corner clipping of the
+          SVG. This way the tooltip can extend slightly past the map bounds
+          without being cut off. */}
+      <div className="relative" onMouseLeave={() => setTip(null)}>
+       <div className="relative rounded-xl border border-border/70 overflow-hidden bg-gradient-to-br from-muted/30 to-background">
         {isDrilled && (
           <button
             onClick={() => setMunicipio(null)}
@@ -212,149 +204,70 @@ export function LisbonMap() {
           </div>
         )}
 
-        <ComposableMap
-          key={drilldown.municipio ? `muni-${drilldown.municipio}` : 'district'}
-          projection="geoMercator"
-          projectionConfig={{ center: projCenter, scale: projScale }}
-          width={MAP_W}
-          height={MAP_H}
-          style={{ width: '100%', height: 'auto' }}
+        <svg
+          viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+          role="img"
+          aria-label={isDrilled ? `${drilldown.municipio} parishes` : 'Lisboa district municipalities'}
         >
-          {/* LAYER 1 — District view */}
-          {!isDrilled && districtGeo.geography && (
-            <Geographies geography={districtGeo.geography}>
-              {({ geographies }) =>
-                geographies.map(geo => {
-                  const name = districtMuniNameFrom(geo.properties as Record<string, unknown>);
-                  const stat = muniByName[name] ?? muniByName[normalizeName(name)];
-                  const fill = colorFor(stat?.avg_m2 ?? 0);
-                  const isClickable = normalizeName(name) === 'lisboa';
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      onClick={() => { if (isClickable) setMunicipio(name); }}
-                      onMouseEnter={e => setTip({
-                        name,
-                        m2: stat?.avg_m2 ?? 0,
-                        yoy: stat?.yoy_change ?? null,
-                        x: e.clientX, y: e.clientY,
-                      })}
-                      onMouseMove={e => setTip({
-                        name,
-                        m2: stat?.avg_m2 ?? 0,
-                        yoy: stat?.yoy_change ?? null,
-                        x: e.clientX, y: e.clientY,
-                      })}
-                      onMouseLeave={() => setTip(null)}
-                      style={{
-                        default: {
-                          fill,
-                          fillOpacity: 0.85,
-                          stroke: 'rgba(255,255,255,0.6)',
-                          strokeWidth: 0.6,
-                          outline: 'none',
-                          cursor: isClickable ? 'pointer' : 'default',
-                          transition: 'fill-opacity 200ms ease',
-                        },
-                        hover: {
-                          fill,
-                          fillOpacity: 1,
-                          stroke: '#ffffff',
-                          strokeWidth: 1.2,
-                          outline: 'none',
-                          cursor: isClickable ? 'pointer' : 'default',
-                          filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))',
-                        },
-                        pressed: { fill, outline: 'none' },
-                      }}
-                    />
-                  );
-                })
-              }
-            </Geographies>
-          )}
+          <g>
+            {pathGen && activeFeatures.map((feat, idx) => {
+              const props = feat.properties as Record<string, unknown>;
+              const isParishLayer = isDrilled && hasParishShapes;
+              const name = isParishLayer ? parishNameFrom(props) : districtMuniNameFrom(props);
+              const stat = isParishLayer
+                ? parishByNormName.get(normalizeName(name))
+                : (muniByName[name] ?? muniByName[normalizeName(name)]);
+              const isClickable = !isDrilled && normalizeName(name) === 'lisboa';
 
-          {/* LAYER 2 — Muni outline (only when no parish shapes are available) */}
-          {isDrilled && selectedMuniFeature && !hasParishShapes && (
-            <Geographies geography={{ type: 'FeatureCollection', features: [selectedMuniFeature] } as any}>
-              {({ geographies }) =>
-                geographies.map(geo => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    style={{
-                      default: {
-                        fill: 'rgba(99,102,241,0.06)',
-                        stroke: 'rgba(139,92,246,0.85)',
-                        strokeWidth: 1.2,
-                        strokeDasharray: '4 3',
-                        vectorEffect: 'non-scaling-stroke',
-                        outline: 'none',
-                      },
-                      hover: { outline: 'none' },
-                      pressed: { outline: 'none' },
-                    }}
-                  />
-                ))
-              }
-            </Geographies>
-          )}
+              const value = stat?.avg_m2 ?? 0;
+              const fill = colorFor(value);
+              const d = pathGen(feat as unknown as GeoPermissibleObjects);
+              if (!d) return null;
 
-          {/* LAYER 3 — Parish polygons for the drilled muni */}
-          {isDrilled && hasParishShapes && (
-            <Geographies geography={{ type: 'FeatureCollection', features: parishFeaturesForMuni } as any}>
-              {({ geographies }) =>
-                geographies.map(geo => {
-                  const rawName = parishNameFrom(geo.properties as Record<string, unknown>);
-                  const stat = parishByNormName.get(normalizeName(rawName));
-                  const fill = colorFor(stat?.avg_m2 ?? 0);
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      onMouseEnter={e => setTip({
-                        name: rawName,
-                        m2: stat?.avg_m2 ?? 0,
-                        yoy: stat?.yoy_change ?? null,
-                        x: e.clientX, y: e.clientY,
-                      })}
-                      onMouseMove={e => setTip({
-                        name: rawName,
-                        m2: stat?.avg_m2 ?? 0,
-                        yoy: stat?.yoy_change ?? null,
-                        x: e.clientX, y: e.clientY,
-                      })}
-                      onMouseLeave={() => setTip(null)}
-                      style={{
-                        default: {
-                          fill,
-                          fillOpacity: 0.88,
-                          stroke: 'rgba(255,255,255,0.9)',
-                          strokeWidth: 1.2,
-                          vectorEffect: 'non-scaling-stroke',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          transition: 'fill-opacity 200ms ease',
-                        },
-                        hover: {
-                          fill,
-                          fillOpacity: 1,
-                          stroke: '#ffffff',
-                          strokeWidth: 2,
-                          vectorEffect: 'non-scaling-stroke',
-                          outline: 'none',
-                          filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.35))',
-                        },
-                        pressed: { fill, outline: 'none' },
-                      }}
-                    />
-                  );
-                })
-              }
-            </Geographies>
-          )}
-        </ComposableMap>
+              const isHovered = tip?.name === name;
+
+              const updateTip = (e: React.MouseEvent<SVGPathElement>) => {
+                const rect = (e.currentTarget.ownerSVGElement?.parentElement as HTMLElement)
+                  ?.getBoundingClientRect();
+                const x = rect ? e.clientX - rect.left : e.clientX;
+                const y = rect ? e.clientY - rect.top : e.clientY;
+                setTip({
+                  name,
+                  m2: value,
+                  yoy: stat?.yoy_change ?? null,
+                  listings: stat?.total_rows ?? null,
+                  clickable: isClickable,
+                  x,
+                  y,
+                });
+              };
+
+              return (
+                <path
+                  key={`${name}-${idx}`}
+                  d={d}
+                  fill={fill}
+                  fillOpacity={isHovered ? 1 : 0.88}
+                  stroke="#ffffff"
+                  strokeOpacity={isHovered ? 1 : 0.7}
+                  strokeWidth={isHovered ? 1.6 : 1}
+                  vectorEffect="non-scaling-stroke"
+                  style={{
+                    cursor: isParishLayer || isClickable ? 'pointer' : 'default',
+                    pointerEvents: 'all',
+                  }}
+                  onMouseEnter={updateTip}
+                  onMouseMove={updateTip}
+                  onClick={() => {
+                    if (isClickable) setMunicipio(name);
+                  }}
+                />
+              );
+            })}
+          </g>
+        </svg>
 
         {/* Chip-list fallback */}
         {showChipFallback && (
@@ -386,33 +299,47 @@ export function LisbonMap() {
             </div>
           </div>
         )}
+       </div>
 
-      </div>
-
-      {/* Tooltip — rendered outside overflow-hidden so it's never clipped */}
-      {tip && (
-        <div
-          className="pointer-events-none fixed z-[9999] rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 text-[11px] shadow-xl backdrop-blur-sm"
-          style={{ left: tip.x + 14, top: tip.y + 14 }}
-        >
-          <div className="font-semibold">{tip.name}</div>
-          {tip.m2 > 0 ? (
-            <div className="text-muted-foreground">{fmtEur(tip.m2)}/m²</div>
-          ) : (
-            <div className="text-muted-foreground">No data</div>
-          )}
-          {tip.yoy !== null && tip.yoy !== 0 && (
-            <div
-              className={cn(
-                'text-[10px] font-medium',
-                tip.yoy >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
-              )}
-            >
-              {tip.yoy >= 0 ? '+' : ''}{tip.yoy.toFixed(1)}% YoY
+        {/* Tooltip — sits in the OUTER relative wrapper (which doesn't clip)
+            so it can extend past the rounded map edges without being cut off.
+            Coords are relative to that outer wrapper. */}
+        {tip && (
+          <div
+            className="pointer-events-none absolute z-30 min-w-[160px] rounded-lg border border-border/60 bg-background/95 px-2.5 py-1.5 text-[11px] text-foreground shadow-xl backdrop-blur-sm"
+            style={{
+              left: tip.x + 14,
+              top: tip.y + 14,
+              maxWidth: 220,
+            }}
+          >
+            <div className="font-semibold">{tip.name}</div>
+            <div className="text-muted-foreground">
+              {tip.m2 > 0 ? `${fmtEur(tip.m2)}/m²` : 'No data available'}
             </div>
-          )}
-        </div>
-      )}
+            {tip.yoy !== null && tip.yoy !== 0 && (
+              <div
+                className={cn(
+                  'text-[10px] font-medium',
+                  tip.yoy >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+                )}
+              >
+                {tip.yoy >= 0 ? '+' : ''}{tip.yoy.toFixed(1)}% YoY
+              </div>
+            )}
+            {tip.listings !== null && tip.listings > 0 && (
+              <div className="text-[10px] text-muted-foreground/80">
+                {fmtInt(tip.listings)} listings
+              </div>
+            )}
+            {tip.clickable && (
+              <div className="mt-1 border-t border-border/40 pt-1 text-[10px] font-medium text-primary/80">
+                Click to drill into parishes →
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
