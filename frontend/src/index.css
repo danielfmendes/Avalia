@@ -127,4 +127,14 @@
   html {
     @apply font-sans;
     }
+
+  /* Recharts surfaces become focusable on click and pick up the global
+     outline-ring color, drawing a thin white box around the plot area.
+     Suppress it everywhere recharts renders. */
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-surface,
+  .recharts-surface * {
+    outline: none !important;
+  }
 }

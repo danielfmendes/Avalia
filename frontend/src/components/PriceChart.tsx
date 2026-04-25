@@ -9,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
+  ReferenceDot,
 } from 'recharts';
 import { LineChart as LineIcon, Inbox, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
@@ -85,6 +87,14 @@ export function PriceChart() {
 
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
+
+  // One-frame mount delay so ResponsiveContainer doesn't warn about width(-1)
+  // on the first paint when the parent flex cell hasn't been measured yet.
+  const [chartReady, setChartReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setChartReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const chartData = useMemo<MergedPoint[]>(() => {
     const price = aggregateByMonth(filteredData, metric);
@@ -255,6 +265,7 @@ export function PriceChart() {
       ) : (
         <>
           <div className="min-h-0 flex-1 w-full">
+            {chartReady && (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
@@ -332,14 +343,57 @@ export function PriceChart() {
                   />
                 )}
 
+                {/* Apple-Stocks-style click-drag highlight: shaded band between
+                    anchor (mousedown) and current hover, tinted by direction. */}
+                {isAnchored
+                  && anchorIndex !== null
+                  && hoverIndex !== null
+                  && chartData[anchorIndex]
+                  && chartData[hoverIndex]
+                  && anchorIndex !== hoverIndex && (
+                  <ReferenceArea
+                    yAxisId="price"
+                    x1={chartData[Math.min(anchorIndex, hoverIndex)].mes_ano}
+                    x2={chartData[Math.max(anchorIndex, hoverIndex)].mes_ano}
+                    fill={isUp ? '#10b981' : '#f43f5e'}
+                    fillOpacity={0.10}
+                    stroke="none"
+                  />
+                )}
+
+                {/* Solid colored vertical line + dot at the anchor */}
                 {isAnchored && anchorIndex !== null && chartData[anchorIndex] && (
+                  <>
+                    <ReferenceLine
+                      yAxisId="price"
+                      x={chartData[anchorIndex].mes_ano}
+                      stroke={isUp ? '#10b981' : '#f43f5e'}
+                      strokeWidth={1.5}
+                      strokeOpacity={0.85}
+                    />
+                    <ReferenceDot
+                      yAxisId="price"
+                      x={chartData[anchorIndex].mes_ano}
+                      y={chartData[anchorIndex].price}
+                      r={4}
+                      fill={isUp ? '#10b981' : '#f43f5e'}
+                      stroke={isDark ? '#0f172a' : '#ffffff'}
+                      strokeWidth={2}
+                    />
+                  </>
+                )}
+
+                {/* And a matching colored line at the current hover position */}
+                {isAnchored
+                  && hoverIndex !== null
+                  && chartData[hoverIndex]
+                  && hoverIndex !== anchorIndex && (
                   <ReferenceLine
                     yAxisId="price"
-                    x={chartData[anchorIndex].mes_ano}
-                    stroke={lineColor}
+                    x={chartData[hoverIndex].mes_ano}
+                    stroke={isUp ? '#10b981' : '#f43f5e'}
                     strokeWidth={1.5}
-                    strokeOpacity={0.7}
-                    strokeDasharray="3 3"
+                    strokeOpacity={0.85}
                   />
                 )}
 
@@ -360,6 +414,7 @@ export function PriceChart() {
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           {/* Legend */}
