@@ -1,10 +1,44 @@
 import { useMemo, useState } from 'react';
-import { Wallet, CheckCircle2, XCircle, Home, PiggyBank, Ruler, Loader2 } from 'lucide-react';
+import { Wallet, CheckCircle2, XCircle, Home, PiggyBank, Ruler, Loader2, BedDouble, SquareDashed } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { wavg } from '@/lib/dataUtils';
 import { useAvaliaData } from '@/hooks/useAvaliaData';
 import { cn } from '@/lib/utils';
 import type { HabitacaoRecord } from '@/lib/types';
+
+const ROOM_OPTIONS: Array<{ label: string; value: string | null }> = [
+  { label: 'Any',  value: null },
+  { label: 'T0',   value: 'T0' },
+  { label: 'T1',   value: 'T1' },
+  { label: 'T2',   value: 'T2' },
+  { label: 'T3',   value: 'T3' },
+  { label: 'T4+',  value: 'T4+' },
+];
+
+const AREA_OPTIONS: Array<{ label: string; min: number | null; max: number | null }> = [
+  { label: 'Any',         min: null, max: null },
+  { label: '< 50 m²',     min: null, max: 50 },
+  { label: '50–100 m²',   min: 50,   max: 100 },
+  { label: '100–150 m²',  min: 100,  max: 150 },
+  { label: '> 150 m²',    min: 150,  max: null },
+];
+
+// Match the same room-bucket semantics used elsewhere in the app: T4+ catches
+// any unit with 4 or more bedrooms (T4, T5, …), exact match otherwise.
+function matchesRoom(quartos: string, filter: string | null): boolean {
+  if (!filter) return true;
+  if (filter === 'T4+') {
+    const n = parseInt(quartos.replace(/\D/g, ''), 10);
+    return Number.isFinite(n) && n >= 4;
+  }
+  return quartos === filter;
+}
+
+function matchesArea(area: number, min: number | null, max: number | null): boolean {
+  if (min !== null && area < min) return false;
+  if (max !== null && area > max) return false;
+  return true;
+}
 
 interface MuniRow {
   municipio: string;
@@ -23,11 +57,19 @@ interface ParishRow {
   volume: number;
 }
 
-function municipalityRows(records: HabitacaoRecord[]): MuniRow[] {
+interface RowFilters {
+  room: string | null;
+  areaMin: number | null;
+  areaMax: number | null;
+}
+
+function municipalityRows(records: HabitacaoRecord[], f: RowFilters): MuniRow[] {
   const scope = records.filter(
     r => r.tipo_venda === 'compra'
       && r.freguesia === 'Grouped at Municipio level'
-      && r.mes_ano.startsWith('2023'),
+      && r.mes_ano.startsWith('2023')
+      && matchesRoom(r.quartos, f.room)
+      && matchesArea(r.avg_area, f.areaMin, f.areaMax),
   );
   const munis = [...new Set(scope.map(r => r.municipio))];
   return munis
@@ -44,12 +86,14 @@ function municipalityRows(records: HabitacaoRecord[]): MuniRow[] {
     .filter(r => r.avgPrice > 0);
 }
 
-function parishRows(records: HabitacaoRecord[], municipio: string): ParishRow[] {
+function parishRows(records: HabitacaoRecord[], municipio: string, f: RowFilters): ParishRow[] {
   const scope = records.filter(
     r => r.tipo_venda === 'compra'
       && r.municipio === municipio
       && r.freguesia !== 'Grouped at Municipio level'
-      && r.mes_ano.startsWith('2023'),
+      && r.mes_ano.startsWith('2023')
+      && matchesRoom(r.quartos, f.room)
+      && matchesArea(r.avg_area, f.areaMin, f.areaMax),
   );
   const names = [...new Set(scope.map(r => r.freguesia))];
   return names
@@ -77,6 +121,15 @@ export function Affordability() {
   const { districtData } = useDashboard();
   const [budget, setBudget] = useState<number>(350_000);
   const [scope, setScope] = useState<'municipios' | 'freguesias'>('municipios');
+  const [room, setRoom] = useState<string | null>(null);
+  const [areaIdx, setAreaIdx] = useState<number>(0);
+
+  const filters = useMemo<RowFilters>(() => {
+    const a = AREA_OPTIONS[areaIdx] ?? AREA_OPTIONS[0];
+    return { room, areaMin: a.min, areaMax: a.max };
+  }, [room, areaIdx]);
+
+  const filtersActive = room !== null || areaIdx > 0;
 
   // Parish rows for Lisbon city come from the municipality-drill endpoint —
   // the district-level feed returns only grouped-at-muni aggregates.
@@ -85,10 +138,13 @@ export function Affordability() {
     : null;
   const lisboaQ = useAvaliaData(lisboaScope);
 
-  const munis = useMemo(() => municipalityRows(districtData), [districtData]);
+  const munis = useMemo(
+    () => municipalityRows(districtData, filters),
+    [districtData, filters],
+  );
   const parishes = useMemo(
-    () => (scope === 'freguesias' ? parishRows(lisboaQ.data, 'Lisboa') : []),
-    [scope, lisboaQ.data],
+    () => (scope === 'freguesias' ? parishRows(lisboaQ.data, 'Lisboa', filters) : []),
+    [scope, lisboaQ.data, filters],
   );
 
   // Sort from "best fit" downwards:
@@ -128,9 +184,15 @@ export function Affordability() {
 
   const totalCount = scope === 'municipios' ? muniEval.length : parishEval.length;
 
-  // Budget-implied floor area, using the cheapest-per-m² municipality as a best case.
-  const cheapestM2 = Math.min(...munis.map(r => r.avgM2));
-  const bestCaseArea = cheapestM2 > 0 ? budget / cheapestM2 : 0;
+  // Budget-implied floor area, using the cheapest-per-m² municipality as a
+  // best case. Guard against the empty-rows case (Math.min of nothing is
+  // Infinity) and against zero/negative averages.
+  const cheapestM2 = munis.length > 0
+    ? munis.reduce((min, r) => (r.avgM2 > 0 && r.avgM2 < min ? r.avgM2 : min), Infinity)
+    : Infinity;
+  const bestCaseArea = Number.isFinite(cheapestM2) && cheapestM2 > 0
+    ? budget / cheapestM2
+    : 0;
 
   const presetAmounts = [150_000, 250_000, 350_000, 500_000, 750_000, 1_000_000];
 
@@ -143,7 +205,8 @@ export function Affordability() {
         </div>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Affordability</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Enter a budget and see where the average 2023 listing falls inside — or outside — your range.
+          Enter a budget — and optionally narrow to a specific bedroom count or floor area — to see where
+          the average 2023 listing falls inside or outside your range.
         </p>
       </div>
 
@@ -235,6 +298,73 @@ export function Affordability() {
         </div>
       </div>
 
+      {/* Property filters — narrows affordability check to a specific
+          bedroom count and / or area bucket. Both default to "Any". */}
+      <div className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm dark:bg-card/30">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <BedDouble className="h-3 w-3" />
+              Bedrooms
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {ROOM_OPTIONS.map(opt => {
+                const active = opt.value === room;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => setRoom(opt.value)}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      active
+                        ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                        : 'border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:ml-2">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <SquareDashed className="h-3 w-3" />
+              Area
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {AREA_OPTIONS.map((opt, i) => {
+                const active = i === areaIdx;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => setAreaIdx(i)}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      active
+                        ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                        : 'border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {filtersActive && (
+            <button
+              onClick={() => { setRoom(null); setAreaIdx(0); }}
+              className="ml-auto self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Reset filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Scope toggle */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground font-medium">Show:</span>
@@ -265,7 +395,30 @@ export function Affordability() {
         )}
       </div>
 
-      {/* Results grid */}
+      {/* Results grid — or an empty state when the filters exclude every row */}
+      {totalCount === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/60 bg-card/30 px-6 py-10 text-center">
+          <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-muted/60">
+            <SquareDashed className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="mt-3 text-sm font-medium">
+            No 2023 listings match these filters
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {room ? `${room} bedrooms` : 'Any bedrooms'} ·{' '}
+            {AREA_OPTIONS[areaIdx].label.toLowerCase()} · in{' '}
+            {scope === 'municipios' ? 'Lisboa municipalities' : 'Lisbon parishes'}
+          </div>
+          {filtersActive && (
+            <button
+              onClick={() => { setRoom(null); setAreaIdx(0); }}
+              className="mt-3 rounded-full border border-border/60 bg-background px-3 py-1 text-[11px] font-medium hover:bg-muted/40"
+            >
+              Reset filters
+            </button>
+          )}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {scope === 'municipios'
           ? muniEval.map(r => {
@@ -386,6 +539,7 @@ export function Affordability() {
               );
             })}
       </div>
+      )}
 
       {scope === 'freguesias' && parishEval.length > 60 && (
         <p className="text-[10px] text-muted-foreground text-center">
@@ -393,8 +547,20 @@ export function Affordability() {
         </p>
       )}
       <p className="text-[10px] text-muted-foreground leading-relaxed">
-        * Affordability compares your budget to the 2023 weighted average sale price per region. Real listings
-        vary widely above and below this average. Excludes taxes, fees, and financing costs.
+        * Affordability compares your budget to the 2023 weighted average sale price per region
+        {filtersActive && (
+          <>
+            {' '}for{' '}
+            <span className="font-medium text-foreground">
+              {room ?? 'any bedroom count'}
+            </span>{' '}
+            ·{' '}
+            <span className="font-medium text-foreground">
+              {AREA_OPTIONS[areaIdx].label.toLowerCase()}
+            </span>
+          </>
+        )}
+        . Real listings vary widely above and below this average. Excludes taxes, fees, and financing costs.
       </p>
     </div>
   );

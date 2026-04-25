@@ -186,7 +186,7 @@ export function AIPredictions() {
           </div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">AI Predictions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            12-month price projection with 95% confidence band · linear trend on trailing 18 months.
+            12-month price projection with a forecast range · linear trend on trailing 18 months.
           </p>
         </div>
         <Badge variant="outline" className="gap-1 text-xs">
@@ -232,7 +232,7 @@ export function AIPredictions() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Price Forecast</CardTitle>
           <CardDescription>
-            {subtitle} · Historical + 12-month projection with 95% confidence band
+            {subtitle} · Historical + 12-month projection with a forecast uncertainty range
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -287,21 +287,20 @@ export function AIPredictions() {
                     }}
                   />
                 )}
+                {/* Proper band between lower and upper. Recharts accepts a
+                    function returning a tuple — anything outside the forecast
+                    portion has undefined lower/upper and is skipped, so the
+                    band only renders to the right of the split. */}
                 <Area
                   type="monotone"
-                  dataKey="upper"
+                  dataKey={(d: any) =>
+                    d.lower != null && d.upper != null ? [d.lower, d.upper] : null
+                  }
                   stroke="none"
                   fill="#f59e0b"
-                  fillOpacity={0.15}
-                  name="Upper bound"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="lower"
-                  stroke="none"
-                  fill="#f59e0b"
-                  fillOpacity={0.0}
-                  name="Lower bound"
+                  fillOpacity={0.18}
+                  name="Forecast range"
+                  isAnimationActive={false}
                 />
                 <Area
                   type="monotone"
@@ -321,7 +320,7 @@ export function AIPredictions() {
               <span className="inline-block h-0.5 w-4 bg-blue-500" /> Historical
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-3 w-4 rounded-sm bg-amber-500/30" /> 95% Confidence Band
+              <span className="inline-block h-3 w-4 rounded-sm bg-amber-500/30" /> Forecast range
             </span>
           </div>
         </CardContent>

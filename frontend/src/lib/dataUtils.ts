@@ -198,7 +198,13 @@ export function getFreguesiaStats(
     const prevYear = latestYear ? `${parseInt(latestYear) - 1}` : '';
 
     const curRs = rs.filter(r => r.mes_ano.startsWith(latestYear));
-    const prevRs = rs.filter(r => r.mes_ano.startsWith(prevYear));
+    // Only compare against the same calendar months observed in `curRs` —
+    // otherwise a partial-2024 (e.g. Jan–Mar) is benchmarked against full 2023
+    // and the YoY skews along seasonal patterns.
+    const curMonths = new Set(curRs.map(r => r.mes_ano.slice(5, 7)));
+    const prevRs = rs.filter(
+      r => r.mes_ano.startsWith(prevYear) && curMonths.has(r.mes_ano.slice(5, 7)),
+    );
 
     const m2 = wavg(curRs, 'avg_m2');
     const prevM2 = wavg(prevRs, 'avg_m2');

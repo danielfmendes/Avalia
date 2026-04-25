@@ -609,8 +609,12 @@ export function Compare() {
             <CardContent>
               <div className="h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
+                  {/* Compare variant: straight-segment lines with visible
+                      dots so you can read off the raw monthly value at each
+                      side-by-side data point, plus a solid horizontal grid
+                      for precise visual alignment between scopes. */}
                   <LineChart data={combinedChart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                    <CartesianGrid stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="mes_ano"
                       tick={{ fill: textColor, fontSize: 10 }}
@@ -642,12 +646,12 @@ export function Compare() {
                     {selected.map((name, i) => (
                       <Line
                         key={name}
-                        type="monotone"
+                        type="linear"
                         dataKey={name}
                         stroke={colorOf(i)}
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 2, fill: colorOf(i), strokeWidth: 0 }}
+                        activeDot={{ r: 5 }}
                         connectNulls
                       />
                     ))}

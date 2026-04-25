@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
   Activity, BedDouble, ChevronDown, Coins, Hammer, Hotel, MapPin, Plus, Search, TrendingUp, Users, X,
@@ -525,6 +525,25 @@ export function Signals() {
   // For raw mode (single signal) — use that signal's formatter for the right axis.
   const lonelySignal = activeConfigs.length === 1 ? activeConfigs[0] : null;
 
+  // Every signal renders as the same monotone line — only color distinguishes them.
+  function renderSignalSeries(cfg: SignalConfig, dataKey: string, yAxisId: string | undefined) {
+    return (
+      <Line
+        key={cfg.id}
+        yAxisId={yAxisId}
+        dataKey={dataKey}
+        name={lineLabelFor(cfg)}
+        type="monotone"
+        stroke={cfg.color}
+        strokeWidth={2}
+        dot={false}
+        activeDot={{ r: 4 }}
+        connectNulls
+        isAnimationActive={false}
+      />
+    );
+  }
+
   // ── Tooltip helpers ───────────────────────────────────────────────────────
   // Annual signals only have one observation per year (placed at YYYY-06), so
   // hovering on any other month would normally show no value. Carry the most
@@ -558,15 +577,15 @@ export function Signals() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70">
           <Activity className="h-3 w-3 text-amber-500" />
           External signals
         </div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Signals</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Signals</h1>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
           Compare {priceScopeLabel} {tipoVenda === 'compra' ? 'sale' : 'rental'} prices against
           search interest, tourism, construction, earnings, and labour signals — overlay any
           combination to see which one moves with the market.
@@ -701,7 +720,7 @@ export function Signals() {
             <div className="flex flex-1 items-center justify-center py-3">
               <div
                 className={cn(
-                  'text-4xl font-semibold tabular-nums leading-none',
+                  'text-3xl font-semibold tabular-nums leading-none sm:text-4xl',
                   priceChange >= 0
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-rose-600 dark:text-rose-400',
@@ -806,16 +825,16 @@ export function Signals() {
           ) : points.length === 0 ? (
             <ChartPlaceholder>No data in the active series.</ChartPlaceholder>
           ) : (
-            <div className="h-[380px] w-full">
+            <div className="h-[300px] w-full sm:h-[380px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
+                <ComposedChart data={points} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                   <XAxis
                     dataKey="mes_ano"
                     tick={{ fill: textColor, fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
-                    interval={Math.max(0, Math.floor(points.length / 10))}
+                    interval={Math.max(0, Math.floor(points.length / 8))}
                   />
 
                   {effectiveMode === 'indexed' ? (
@@ -941,19 +960,7 @@ export function Signals() {
                         stroke={PRICE_COLOR} strokeWidth={2.25} dot={false}
                         activeDot={{ r: 4 }} connectNulls
                       />
-                      {activeConfigs.map(cfg => (
-                        <Line
-                          key={cfg.id}
-                          type="monotone"
-                          dataKey={`i_${cfg.id}`}
-                          name={lineLabelFor(cfg)}
-                          stroke={cfg.color}
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 4 }}
-                          connectNulls
-                        />
-                      ))}
+                      {activeConfigs.map(cfg => renderSignalSeries(cfg, `i_${cfg.id}`, undefined))}
                     </>
                   ) : (
                     <>
@@ -962,22 +969,10 @@ export function Signals() {
                         stroke={PRICE_COLOR} strokeWidth={2.25} dot={false}
                         activeDot={{ r: 4 }} connectNulls
                       />
-                      {lonelySignal && (
-                        <Line
-                          yAxisId="signal"
-                          type="monotone"
-                          dataKey={`s_${lonelySignal.id}`}
-                          name={lineLabelFor(lonelySignal)}
-                          stroke={lonelySignal.color}
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 4 }}
-                          connectNulls
-                        />
-                      )}
+                      {lonelySignal && renderSignalSeries(lonelySignal, `s_${lonelySignal.id}`, 'signal')}
                     </>
                   )}
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}

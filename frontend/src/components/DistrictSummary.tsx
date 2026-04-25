@@ -14,14 +14,24 @@ export function DistrictSummary() {
     if (stats.length === 0) {
       return { topPrice: null, topGrowth: null, topYield: null, totalListings: 0 };
     }
-    const byPrice = [...stats].sort((a, b) => b.avg_m2 - a.avg_m2)[0];
-    const byGrowth = [...stats].sort((a, b) => b.yoy_change - a.yoy_change)[0];
-    const byYield = [...stats].sort((a, b) => b.rental_yield - a.rental_yield)[0];
+    // Pick the maximum in a single pass and skip ranks with no real signal —
+    // otherwise an alphabetically-first muni shows up as "fastest growing" with
+    // 0% when YoY data isn't available yet.
+    const pickMax = <T extends Record<K, number>, K extends string>(
+      arr: T[], key: K,
+    ): T | null => {
+      let best: T | null = null;
+      for (const r of arr) {
+        if (r[key] === 0 && (best === null || best[key] === 0)) continue;
+        if (best === null || r[key] > best[key]) best = r;
+      }
+      return best;
+    };
     const volume = stats.reduce((s, m) => s + m.total_rows, 0);
     return {
-      topPrice: byPrice,
-      topGrowth: byGrowth,
-      topYield: byYield,
+      topPrice: pickMax(stats, 'avg_m2'),
+      topGrowth: pickMax(stats, 'yoy_change'),
+      topYield: pickMax(stats, 'rental_yield'),
       totalListings: volume,
     };
   }, [districtData]);
@@ -38,20 +48,22 @@ export function DistrictSummary() {
     {
       icon: <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />,
       label: 'Fastest growing',
-      primary: topGrowth!.name,
-      secondary: `${topGrowth!.yoy_change >= 0 ? '+' : ''}${topGrowth!.yoy_change.toFixed(1)}% YoY`,
+      primary: topGrowth?.name ?? '—',
+      secondary: topGrowth
+        ? `${topGrowth.yoy_change >= 0 ? '+' : ''}${topGrowth.yoy_change.toFixed(1)}% YoY`
+        : 'no YoY data',
     },
     {
       icon: <Banknote className="h-3.5 w-3.5 text-fuchsia-500" />,
       label: 'Best rental yield',
-      primary: topYield!.name,
-      secondary: `${topYield!.rental_yield.toFixed(1)}% gross`,
+      primary: topYield?.name ?? '—',
+      secondary: topYield ? `${topYield.rental_yield.toFixed(1)}% gross` : 'no rental data',
     },
     {
       icon: <BarChart3 className="h-3.5 w-3.5 text-indigo-500" />,
       label: 'District listings',
       primary: totalListings.toLocaleString('pt-PT'),
-      secondary: 'full 2023 vintage',
+      secondary: '2023 listings',
     },
   ];
 

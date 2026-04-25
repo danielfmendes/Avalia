@@ -65,6 +65,8 @@ function smartInterval(count: number): number {
 interface MergedPoint {
   mes_ano: string;
   price: number;
+  parentPrice: number | null;
+  grandparentPrice: number | null;
   volume: number;
 }
 
@@ -96,11 +98,53 @@ export function PriceChart() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Parent series: when drilled into a parish, the parent is the parent muni;
+  // when drilled into a muni, the parent is the whole district. Lets the user
+  // see the local trend against its broader context on the same chart.
+  const parentSeries = useMemo(() => {
+    if (!drilldown.municipio) return [];
+    const rows = drilldown.freguesia
+      ? districtData.filter(
+          r => r.tipo_venda === tipoVenda
+            && r.municipio === drilldown.municipio
+            && r.freguesia === 'Grouped at Municipio level',
+        )
+      : districtData.filter(
+          r => r.tipo_venda === tipoVenda
+            && r.freguesia === 'Grouped at Municipio level',
+        );
+    return aggregateByMonth(rows, metric);
+  }, [districtData, drilldown.municipio, drilldown.freguesia, tipoVenda, metric]);
+
+  // Grandparent series: only shown at parish-level drill — the whole district
+  // sits one layer above the parent muni so the user can see all three scopes
+  // (parish vs city vs district) at the same time.
+  const grandparentSeries = useMemo(() => {
+    if (!drilldown.freguesia) return [];
+    const rows = districtData.filter(
+      r => r.tipo_venda === tipoVenda && r.freguesia === 'Grouped at Municipio level',
+    );
+    return aggregateByMonth(rows, metric);
+  }, [districtData, drilldown.freguesia, tipoVenda, metric]);
+
+  const parentLabel = drilldown.freguesia
+    ? drilldown.municipio
+    : (drilldown.municipio ? 'Lisboa District' : null);
+  const grandparentLabel = drilldown.freguesia ? 'Lisboa District' : null;
+
   const chartData = useMemo<MergedPoint[]>(() => {
     const price = aggregateByMonth(filteredData, metric);
     const vol = volumeByMonth(filteredData);
-    return price.map(p => ({ mes_ano: p.mes_ano, price: p.value, volume: vol.get(p.mes_ano) ?? 0 }));
-  }, [filteredData, metric]);
+    const parentMap = new Map(parentSeries.map(p => [p.mes_ano, p.value]));
+    const grandparentMap = new Map(grandparentSeries.map(p => [p.mes_ano, p.value]));
+    return price.map(p => ({
+      mes_ano: p.mes_ano,
+      price: p.value,
+      parentPrice: parentMap.get(p.mes_ano) ?? null,
+      grandparentPrice: grandparentMap.get(p.mes_ano) ?? null,
+      volume: vol.get(p.mes_ano) ?? 0,
+    }));
+  }, [filteredData, metric, parentSeries, grandparentSeries]);
 
   // Reset hover and anchor when data changes (new drill, new filter, etc.)
   useEffect(() => { setHoverIndex(null); setAnchorIndex(null); }, [chartData]);
@@ -137,8 +181,9 @@ export function PriceChart() {
     return ((lastPoint.price - districtAvg) / districtAvg) * 100;
   }, [lastPoint, districtAvg]);
 
-  const showRefLine = !!drilldown.municipio && districtAvg !== null && !isEmpty;
-  const scope       = drilldown.freguesia
+  const showParentLine      = !!drilldown.municipio && parentSeries.length > 0 && !isEmpty;
+  const showGrandparentLine = !!drilldown.freguesia && grandparentSeries.length > 0 && !isEmpty;
+  const scope          = drilldown.freguesia
     ? `${drilldown.freguesia}, ${drilldown.municipio}`
     : drilldown.municipio ?? 'All Lisboa District';
 
@@ -154,11 +199,17 @@ export function PriceChart() {
     [interval],
   );
 
-  const gridColor   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textColor   = isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.38)';
-  const lineColor   = tipoVenda === 'compra' ? '#6366f1' : '#10b981';
-  const volumeColor = isDark ? 'rgba(148,163,184,0.28)' : 'rgba(148,163,184,0.45)';
-  const cursorColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)';
+  const gridColor    = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor    = isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.38)';
+  const lineColor    = tipoVenda === 'compra' ? '#6366f1' : '#10b981';
+  // Parent line: same hue, dashed and softer so it reads as background context
+  // rather than competing with the focused scope.
+  const parentColor  = isDark ? 'rgba(148,163,184,0.55)' : 'rgba(100,116,139,0.55)';
+  // Grandparent line: distinct amber so it doesn't get confused with the
+  // parent muni line. Dotted and faint — even further in the background.
+  const grandparentColor = isDark ? 'rgba(251,191,36,0.55)' : 'rgba(217,119,6,0.50)';
+  const volumeColor  = isDark ? 'rgba(148,163,184,0.28)' : 'rgba(148,163,184,0.45)';
+  const cursorColor  = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)';
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/80 p-5 pb-4 backdrop-blur-sm dark:bg-card/40">
@@ -328,18 +379,41 @@ export function PriceChart() {
                   isAnimationActive={false}
                 />
 
-                {showRefLine && districtAvg !== null && (
-                  <ReferenceLine
+                {/* Grandparent-region line — drawn first so it sits at the
+                    very back. Dotted + amber so it reads as the broadest
+                    background context behind both the parent and the focus. */}
+                {showGrandparentLine && (
+                  <Line
                     yAxisId="price"
-                    y={districtAvg}
-                    stroke={isDark ? 'rgba(255,255,255,0.30)' : 'rgba(0,0,0,0.28)'}
-                    strokeDasharray="4 4"
-                    label={{
-                      value: 'District avg',
-                      position: 'insideTopRight',
-                      fill: textColor,
-                      fontSize: 9,
-                    }}
+                    type="monotone"
+                    dataKey="grandparentPrice"
+                    name="grandparentPrice"
+                    stroke={grandparentColor}
+                    strokeWidth={1.5}
+                    strokeDasharray="2 4"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                    connectNulls
+                  />
+                )}
+
+                {/* Parent-region line — drawn next so it sits behind the
+                    focused scope but in front of the grandparent. Dashed +
+                    muted so it reads as immediate context. */}
+                {showParentLine && (
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="parentPrice"
+                    name="parentPrice"
+                    stroke={parentColor}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                    connectNulls
                   />
                 )}
 
@@ -418,21 +492,39 @@ export function PriceChart() {
           </div>
 
           {/* Legend */}
-          <div className="mt-2 shrink-0 flex items-center gap-4 text-[10px] text-muted-foreground">
+          <div className="mt-2 shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: lineColor }} />
-              Price
+              {scope}
             </span>
+            {showParentLine && parentLabel && (
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-0.5 w-4 rounded-full"
+                  style={{
+                    backgroundColor: 'transparent',
+                    backgroundImage: `repeating-linear-gradient(90deg, ${parentColor} 0 5px, transparent 5px 9px)`,
+                  }}
+                />
+                {parentLabel}
+              </span>
+            )}
+            {showGrandparentLine && grandparentLabel && (
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-0.5 w-4 rounded-full"
+                  style={{
+                    backgroundColor: 'transparent',
+                    backgroundImage: `repeating-linear-gradient(90deg, ${grandparentColor} 0 2px, transparent 2px 6px)`,
+                  }}
+                />
+                {grandparentLabel}
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2 rounded-sm" style={{ backgroundColor: volumeColor }} />
               Volume
             </span>
-            {showRefLine && (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-0.5 w-4 border-t border-dashed border-muted-foreground/50" />
-                District avg
-              </span>
-            )}
           </div>
         </>
       )}

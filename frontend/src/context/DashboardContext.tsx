@@ -16,7 +16,11 @@ interface DashboardContextValue {
   districtData: HabitacaoRecord[];
   /** Scope-specific rows for current drill. Empty at top level. */
   drillData: HabitacaoRecord[];
-  /** Convenience: districtData ∪ drillData, de-duplicated. */
+  /** Parish-breakdown rows for the active muni — stays loaded even when the
+   *  user drills further into a single parish, so the parish heatmap keeps
+   *  its full color scale instead of collapsing to one value. */
+  muniData: HabitacaoRecord[];
+  /** Convenience: districtData ∪ drillData ∪ muniData, de-duplicated. */
   allData: HabitacaoRecord[];
   /** The slice the active view should render (after drill + tipo + filter). */
   filteredData: HabitacaoRecord[];
@@ -98,8 +102,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const drillQ = useAvaliaData(drillScope);
 
+  // Parallel hook pinned at municipality scope. Keeps the per-parish breakdown
+  // available even when the user drills further into a single parish, so the
+  // heatmap's color scale doesn't collapse. URL-level cache in useAvaliaData
+  // means this is essentially free once the muni page has been visited.
+  const muniScope: Scope | null = useMemo(
+    () => (drilldown.municipio ? { level: 'municipality', municipio: drilldown.municipio } : null),
+    [drilldown.municipio],
+  );
+  const muniQ = useAvaliaData(muniScope);
+
   const districtData = districtQ.data;
   const drillData = drillQ.data;
+  const muniData = muniQ.data;
 
   const allData = useMemo<HabitacaoRecord[]>(() => {
     const seen = new Set<string>();
@@ -111,9 +126,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       out.push(r);
     };
     for (const r of districtData) push(r);
+    for (const r of muniData) push(r);
     for (const r of drillData) push(r);
     return out;
-  }, [districtData, drillData]);
+  }, [districtData, drillData, muniData]);
 
   function setMunicipio(municipio: string | null) {
     setDrilldown({ municipio, freguesia: null });
@@ -154,7 +170,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       value={{
         page, setPage,
         drilldown, setMunicipio, setFreguesia, resetDrilldown,
-        districtData, drillData, allData, filteredData,
+        districtData, drillData, muniData, allData, filteredData,
         isLoading, isDistrictLoading, isDrillLoading,
         isError, error, reload,
         tipoVenda, setTipoVenda,

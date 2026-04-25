@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { geoMercator, geoPath, type GeoPermissibleObjects } from 'd3-geo';
-import { ArrowLeft, Info, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Info, Loader2, MapPin, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboard } from '@/context/DashboardContext';
 import { useGeography } from '@/hooks/useGeography';
@@ -48,6 +48,7 @@ interface Tip {
   yoy: number | null;
   listings: number | null;
   clickable: boolean;
+  parishHint: 'select' | 'clear' | null;
   /** Cursor position relative to the map container (px). */
   x: number;
   y: number;
@@ -75,8 +76,9 @@ export function LisbonMap() {
   const {
     drilldown,
     setMunicipio,
+    setFreguesia,
     districtData,
-    drillData,
+    muniData,
     tipoVenda,
     isDrillLoading,
   } = useDashboard();
@@ -91,9 +93,12 @@ export function LisbonMap() {
     return m;
   }, [muniStats]);
 
+  // Use muniData (always at full muni scope) so the heatmap stays colored even
+  // when the user drills into a single parish — drillData would be just one
+  // parish's rows and would collapse the color scale.
   const parishStats = useMemo(
-    () => (drilldown.municipio ? getFreguesiaStats(drillData, drilldown.municipio, tipoVenda) : []),
-    [drillData, drilldown.municipio, tipoVenda],
+    () => (drilldown.municipio ? getFreguesiaStats(muniData, drilldown.municipio, tipoVenda) : []),
+    [muniData, drilldown.municipio, tipoVenda],
   );
   const parishByNormName = useMemo(() => {
     const m = new Map<string, FreguesiaStat>();
@@ -166,7 +171,9 @@ export function LisbonMap() {
           <div className="text-[10px] text-muted-foreground">
             {isDrilled
               ? hasParishShapes
-                ? 'Hover a parish to inspect · click outside to return'
+                ? (drilldown.freguesia
+                    ? 'Click another parish to switch · click outside to clear'
+                    : 'Click a parish to compare on the chart')
                 : parishGeoUnavailable
                   ? 'Parish shapes file not found — showing data chips'
                   : isDrillLoading
@@ -186,7 +193,17 @@ export function LisbonMap() {
           SVG. This way the tooltip can extend slightly past the map bounds
           without being cut off. */}
       <div className="relative" onMouseLeave={() => setTip(null)}>
-       <div className="relative rounded-xl border border-border/70 overflow-hidden bg-gradient-to-br from-muted/30 to-background">
+       <div
+         className="relative rounded-xl border border-border/70 overflow-hidden bg-gradient-to-br from-muted/30 to-background"
+         onClick={(e) => {
+           // Click outside any parish path: clear the selection. The path
+           // handlers stop propagation implicitly because they handle the
+           // click first; this only fires for empty SVG / chrome areas.
+           if (drilldown.freguesia && (e.target as HTMLElement).tagName !== 'path') {
+             setFreguesia(null);
+           }
+         }}
+       >
         {isDrilled && (
           <button
             onClick={() => setMunicipio(null)}
@@ -194,6 +211,20 @@ export function LisbonMap() {
           >
             <ArrowLeft className="h-3 w-3" />
             Back to District
+          </button>
+        )}
+
+        {/* Active-parish chip: persistent, prominent way to see + clear the
+            current parish selection without having to find it on the map. */}
+        {drilldown.freguesia && (
+          <button
+            onClick={() => setFreguesia(null)}
+            className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-indigo-400/60 bg-indigo-500/15 px-3 py-1.5 text-[11px] font-semibold text-indigo-700 shadow-sm backdrop-blur hover:bg-indigo-500/25 transition-colors dark:border-indigo-400/50 dark:text-indigo-300"
+            title="Clear parish selection"
+          >
+            <span className="h-2 w-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+            {drilldown.freguesia}
+            <X className="h-3 w-3 opacity-70" />
           </button>
         )}
 
@@ -220,6 +251,12 @@ export function LisbonMap() {
                 ? parishByNormName.get(normalizeName(name))
                 : (muniByName[name] ?? muniByName[normalizeName(name)]);
               const isClickable = !isDrilled && normalizeName(name) === 'lisboa';
+              // At parish layer, only parishes with data are meaningfully
+              // selectable — empty shapes have no time series to draw.
+              const isParishSelectable = isParishLayer && (stat?.total_rows ?? 0) > 0;
+              const isParishSelected   = isParishLayer
+                && drilldown.freguesia != null
+                && normalizeName(drilldown.freguesia) === normalizeName(name);
 
               const value = stat?.avg_m2 ?? 0;
               const fill = colorFor(value);
@@ -239,29 +276,57 @@ export function LisbonMap() {
                   yoy: stat?.yoy_change ?? null,
                   listings: stat?.total_rows ?? null,
                   clickable: isClickable,
+                  parishHint: isParishSelectable
+                    ? (isParishSelected ? 'clear' : 'select')
+                    : null,
                   x,
                   y,
                 });
               };
 
+              // When a parish is selected, push every other parish back so
+              // the focused one really pops. Selected parish gets a thick
+              // indigo stroke that matches the chart line color.
+              const hasParishFocus = isParishLayer && drilldown.freguesia != null;
               return (
                 <path
                   key={`${name}-${idx}`}
                   d={d}
                   fill={fill}
-                  fillOpacity={isHovered ? 1 : 0.88}
-                  stroke="#ffffff"
-                  strokeOpacity={isHovered ? 1 : 0.7}
-                  strokeWidth={isHovered ? 1.6 : 1}
+                  fillOpacity={
+                    isParishSelected ? 1
+                    : hasParishFocus ? 0.35
+                    : isHovered ? 1
+                    : 0.88
+                  }
+                  stroke={isParishSelected ? '#6366f1' : '#ffffff'}
+                  strokeOpacity={
+                    isParishSelected ? 1
+                    : hasParishFocus && !isHovered ? 0.45
+                    : isHovered ? 1
+                    : 0.7
+                  }
+                  strokeWidth={isParishSelected ? 3 : isHovered ? 1.6 : 1}
                   vectorEffect="non-scaling-stroke"
                   style={{
-                    cursor: isParishLayer || isClickable ? 'pointer' : 'default',
+                    cursor: isParishSelectable || isClickable ? 'pointer' : 'default',
                     pointerEvents: 'all',
+                    filter: isParishSelected
+                      ? 'drop-shadow(0 2px 6px rgba(99,102,241,0.45))'
+                      : undefined,
                   }}
                   onMouseEnter={updateTip}
                   onMouseMove={updateTip}
-                  onClick={() => {
-                    if (isClickable) setMunicipio(name);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isClickable) {
+                      setMunicipio(name);
+                    } else if (isParishSelectable) {
+                      // Toggle: clicking the already-selected parish clears the
+                      // drilldown back to muni-level (so the user can compare
+                      // a different parish without going to the back button).
+                      setFreguesia(isParishSelected ? null : name);
+                    }
                   }}
                 />
               );
@@ -335,6 +400,16 @@ export function LisbonMap() {
             {tip.clickable && (
               <div className="mt-1 border-t border-border/40 pt-1 text-[10px] font-medium text-primary/80">
                 Click to drill into parishes →
+              </div>
+            )}
+            {tip.parishHint === 'select' && (
+              <div className="mt-1 border-t border-border/40 pt-1 text-[10px] font-medium text-primary/80">
+                Click to plot on chart →
+              </div>
+            )}
+            {tip.parishHint === 'clear' && (
+              <div className="mt-1 border-t border-border/40 pt-1 text-[10px] font-medium text-muted-foreground">
+                Click to clear selection
               </div>
             )}
           </div>

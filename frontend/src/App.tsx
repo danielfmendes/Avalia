@@ -1,13 +1,17 @@
+import { lazy, Suspense } from 'react';
 import { DashboardProvider, useDashboard } from '@/context/DashboardContext';
 import { TopNav } from '@/components/TopNav';
-import { MarketOverview } from '@/pages/MarketOverview';
-import { AIPredictions } from '@/pages/AIPredictions';
-import { Signals } from '@/pages/Signals';
-import { Compare } from '@/pages/Compare';
-import { Rooms } from '@/pages/Rooms';
-import { Affordability } from '@/pages/Affordability';
-import { TimeMachine } from '@/pages/TimeMachine';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+
+// Code-split the pages — only the active route's chunk is fetched, which cuts
+// the initial JS payload in half (recharts is heavy and pulled in by most pages).
+const MarketOverview = lazy(() => import('@/pages/MarketOverview').then(m => ({ default: m.MarketOverview })));
+const AIPredictions  = lazy(() => import('@/pages/AIPredictions').then(m => ({ default: m.AIPredictions })));
+const Signals        = lazy(() => import('@/pages/Signals').then(m => ({ default: m.Signals })));
+const Compare        = lazy(() => import('@/pages/Compare').then(m => ({ default: m.Compare })));
+const Rooms          = lazy(() => import('@/pages/Rooms').then(m => ({ default: m.Rooms })));
+const Affordability  = lazy(() => import('@/pages/Affordability').then(m => ({ default: m.Affordability })));
+const TimeMachine    = lazy(() => import('@/pages/TimeMachine').then(m => ({ default: m.TimeMachine })));
 
 function LoadingShell() {
   return (
@@ -44,7 +48,7 @@ function ErrorShell({ error, reload }: { error: string; reload: () => void }) {
   );
 }
 
-function PageRouter() {
+function PageSwitch() {
   const { page } = useDashboard();
   switch (page) {
     case 'market-overview': return <MarketOverview />;
@@ -56,6 +60,14 @@ function PageRouter() {
     case 'time-machine':    return <TimeMachine />;
     default:                return <MarketOverview />;
   }
+}
+
+function PageRouter() {
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <PageSwitch />
+    </Suspense>
+  );
 }
 
 function DashboardContent() {

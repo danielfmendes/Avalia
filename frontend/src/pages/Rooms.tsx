@@ -292,8 +292,10 @@ export function Rooms() {
             <CardContent>
               <div className="h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
+                  {/* Rooms variant: editorial / minimalist look — fluid
+                      "natural" curves, thinner strokes, no grid. The eye
+                      compares trajectories more than exact values here. */}
                   <LineChart data={trend} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="mes_ano"
                       tick={{ fill: textColor, fontSize: 10 }}
@@ -316,16 +318,17 @@ export function Rooms() {
                         color: isDark ? '#f1f5f9' : '#0f172a',
                         fontSize: '12px',
                       }}
+                      cursor={{ stroke: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)', strokeWidth: 1, strokeDasharray: '2 4' }}
                       formatter={(value: any, name: any) => [fmtM2(Number(value)), name]}
                     />
                     <Legend wrapperStyle={{ fontSize: '11px' }} iconType="plainline" />
                     {ROOM_ORDER.map(key => (
                       <Line
                         key={key}
-                        type="monotone"
+                        type="natural"
                         dataKey={key}
                         stroke={ROOM_COLORS[key]}
-                        strokeWidth={2}
+                        strokeWidth={1.75}
                         dot={false}
                         activeDot={{ r: 4 }}
                         connectNulls
