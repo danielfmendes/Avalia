@@ -230,41 +230,60 @@ export function Signals() {
     const dormidasMap = dormidasOn ? new Map(dormidasSeries.map(p => [p.mes_ano, p.value])) : null;
 
     const monthSets = [priceMap, trendsMap, dormidasMap].filter(Boolean) as Map<string, number>[];
+    // Window = full union of months across active series — each line just
+    // appears when its data starts and disappears when it ends, with no
+    // forced overlap requirement.
     const months = [...new Set(monthSets.flatMap(m => [...m.keys()]))].sort();
 
-    // Window = months where every active series has a value, so the indexed
-    // baseline is well-defined and the chart doesn't dangle.
-    const allHave = (m: string) => monthSets.every(s => s.has(m));
-    const firstCommon = months.find(allHave) ?? null;
-    const lastCommon = [...months].reverse().find(allHave) ?? null;
+    // Per-line first/last observation drives both the indexing baseline and
+    // the KPI date range, so a line with shorter coverage rebases against
+    // its own start instead of being forced onto a shared anchor.
+    const firstObs = (map: Map<string, number> | null) => {
+      if (!map) return null;
+      for (const m of months) if (map.has(m)) return { mes_ano: m, value: map.get(m)! };
+      return null;
+    };
+    const lastObs = (map: Map<string, number> | null) => {
+      if (!map) return null;
+      for (let i = months.length - 1; i >= 0; i--) {
+        const m = months[i];
+        if (map.has(m)) return { mes_ano: m, value: map.get(m)! };
+      }
+      return null;
+    };
 
-    const basePrice = firstCommon ? priceMap.get(firstCommon)! : 0;
-    const baseTrends = firstCommon && trendsMap ? trendsMap.get(firstCommon)! : 0;
-    const baseDormidas = firstCommon && dormidasMap ? dormidasMap.get(firstCommon)! : 0;
+    const priceFirst = firstObs(priceMap);
+    const trendsFirst = firstObs(trendsMap);
+    const dormidasFirst = firstObs(dormidasMap);
+    const priceLast = lastObs(priceMap);
+    const trendsLast = lastObs(trendsMap);
+    const dormidasLast = lastObs(dormidasMap);
 
-    const points: MergedPoint[] = months
-      .filter(m => firstCommon && lastCommon && m >= firstCommon && m <= lastCommon)
-      .map(mes_ano => {
-        const price = priceMap.get(mes_ano) ?? null;
-        const t = trendsMap?.get(mes_ano) ?? null;
-        const d = dormidasMap?.get(mes_ano) ?? null;
-        return {
-          mes_ano,
-          price,
-          trends: t,
-          dormidas: d,
-          priceIdx: price != null && basePrice > 0 ? (price / basePrice) * 100 : null,
-          trendsIdx: t != null && baseTrends > 0 ? (t / baseTrends) * 100 : null,
-          dormidasIdx: d != null && baseDormidas > 0 ? (d / baseDormidas) * 100 : null,
-        };
-      });
+    const basePrice = priceFirst?.value ?? 0;
+    const baseTrends = trendsFirst?.value ?? 0;
+    const baseDormidas = dormidasFirst?.value ?? 0;
 
-    const priceVals: number[] = [];
+    const points: MergedPoint[] = months.map(mes_ano => {
+      const price = priceMap.get(mes_ano) ?? null;
+      const t = trendsMap?.get(mes_ano) ?? null;
+      const d = dormidasMap?.get(mes_ano) ?? null;
+      return {
+        mes_ano,
+        price,
+        trends: t,
+        dormidas: d,
+        priceIdx: price != null && basePrice > 0 ? (price / basePrice) * 100 : null,
+        trendsIdx: t != null && baseTrends > 0 ? (t / baseTrends) * 100 : null,
+        dormidasIdx: d != null && baseDormidas > 0 ? (d / baseDormidas) * 100 : null,
+      };
+    });
+
+    // Correlation only makes sense over the months where BOTH series have a
+    // value, regardless of where each line individually starts/ends.
     const trendsVals: number[] = [];
     const dormidasVals: number[] = [];
     const trendsPriceVals: number[] = [];
     const dormidasPriceVals: number[] = [];
-
     for (const p of points) {
       if (p.price != null && p.trends != null) {
         trendsPriceVals.push(p.price);
@@ -274,26 +293,38 @@ export function Signals() {
         dormidasPriceVals.push(p.price);
         dormidasVals.push(p.dormidas);
       }
-      if (p.price != null) priceVals.push(p.price);
     }
 
-    const lastPrice = [...points].reverse().find(p => p.price != null)?.price ?? basePrice;
-    const lastTrends = [...points].reverse().find(p => p.trends != null)?.trends ?? baseTrends;
-    const lastDormidas = [...points].reverse().find(p => p.dormidas != null)?.dormidas ?? baseDormidas;
+    const pct = (first: number, last: number) =>
+      first > 0 ? ((last - first) / first) * 100 : 0;
 
     return {
       points,
-      firstMonth: firstCommon,
-      lastMonth: lastCommon,
-      priceChange: basePrice > 0 ? ((lastPrice - basePrice) / basePrice) * 100 : 0,
-      trendsChange: baseTrends > 0 ? ((lastTrends - baseTrends) / baseTrends) * 100 : 0,
-      dormidasChange: baseDormidas > 0 ? ((lastDormidas - baseDormidas) / baseDormidas) * 100 : 0,
+      windowFirst: months[0] ?? null,
+      windowLast: months[months.length - 1] ?? null,
+      priceFirstMonth: priceFirst?.mes_ano ?? null,
+      priceLastMonth: priceLast?.mes_ano ?? null,
+      trendsFirstMonth: trendsFirst?.mes_ano ?? null,
+      trendsLastMonth: trendsLast?.mes_ano ?? null,
+      dormidasFirstMonth: dormidasFirst?.mes_ano ?? null,
+      dormidasLastMonth: dormidasLast?.mes_ano ?? null,
+      priceChange: pct(basePrice, priceLast?.value ?? basePrice),
+      trendsChange: pct(baseTrends, trendsLast?.value ?? baseTrends),
+      dormidasChange: pct(baseDormidas, dormidasLast?.value ?? baseDormidas),
       corrTrends: pearson(trendsPriceVals, trendsVals),
       corrDormidas: pearson(dormidasPriceVals, dormidasVals),
     };
   }, [priceSeries, trendsSeries, dormidasSeries, trendsOn, dormidasOn]);
 
-  const { points, firstMonth, lastMonth, priceChange, trendsChange, dormidasChange, corrTrends, corrDormidas } = merged;
+  const {
+    points,
+    windowFirst, windowLast,
+    priceFirstMonth, priceLastMonth,
+    trendsFirstMonth, trendsLastMonth,
+    dormidasFirstMonth, dormidasLastMonth,
+    priceChange, trendsChange, dormidasChange,
+    corrTrends, corrDormidas,
+  } = merged;
 
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const textColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
@@ -305,9 +336,10 @@ export function Signals() {
     : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k`
     : Math.round(v).toString();
 
-  const priceLineLabel = `${priceScopeLabel} €/m²`;
-  const trendsLineLabel = 'Search interest (Lisbon)';
-  const dormidasLineLabel = `Overnights — ${dormidasMuni === ALL_AML_OPTION ? 'AML' : dormidasMuni}`;
+  const priceLineScope = dormidasOn && dormidasMuni === ALL_AML_OPTION ? 'AML' : priceScopeLabel;
+  const priceLineLabel = `€/m² · ${priceLineScope}`;
+  const trendsLineLabel = 'Search interest · Lisbon';
+  const dormidasLineLabel = `Overnights · ${dormidasMuni === ALL_AML_OPTION ? 'AML' : dormidasMuni}`;
 
   const hasPriceData = priceSeries.length > 0;
   const isLoadingTrends = trendsOn && rawTrends === null && trendsError === null;
@@ -332,96 +364,85 @@ export function Signals() {
         </p>
       </div>
 
-      {/* Controls */}
+      {/* Controls — single toolbar row */}
       <Card>
-        <CardContent className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-          {/* Signal toggles (chips) */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
-              Compare against
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <SignalChip
-                label="Google Trends"
-                icon={Search}
-                color={TRENDS_COLOR}
-                active={trendsOn}
-                onClick={() => toggleSignal('trends')}
-              />
-              <SignalChip
-                label="Tourism overnights"
-                icon={BedDouble}
-                color={DORMIDAS_COLOR}
-                active={dormidasOn}
-                onClick={() => toggleSignal('dormidas')}
-              />
-            </div>
+        <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+          <ToolbarLabel>Compare</ToolbarLabel>
+          <div className="flex items-center gap-1.5">
+            <SignalChip
+              label="Google Trends"
+              icon={Search}
+              color={TRENDS_COLOR}
+              active={trendsOn}
+              onClick={() => toggleSignal('trends')}
+            />
+            <SignalChip
+              label="Tourism overnights"
+              icon={BedDouble}
+              color={DORMIDAS_COLOR}
+              active={dormidasOn}
+              onClick={() => toggleSignal('dormidas')}
+            />
           </div>
 
-          <div className="flex flex-wrap items-end gap-4">
-            {dormidasOn && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
-                  Municipality
-                </span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    className="inline-flex min-w-[200px] items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      {dormidasMuni === ALL_AML_OPTION ? 'All AML (default)' : dormidasMuni}
-                    </span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="max-h-[280px] w-[220px] overflow-y-auto">
-                    <DropdownMenuRadioGroup value={dormidasMuni} onValueChange={setDormidasMuni}>
-                      <DropdownMenuRadioItem value={ALL_AML_OPTION} className="text-xs">
-                        All AML (default)
+          {dormidasOn && (
+            <>
+              <ToolbarDivider />
+              <ToolbarLabel>In</ToolbarLabel>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 py-1.5 text-[11px] font-medium shadow-sm transition-colors hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
+                  {dormidasMuni === ALL_AML_OPTION ? 'All AML' : dormidasMuni}
+                  <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-h-[280px] w-[220px] overflow-y-auto">
+                  <DropdownMenuRadioGroup value={dormidasMuni} onValueChange={setDormidasMuni}>
+                    <DropdownMenuRadioItem value={ALL_AML_OPTION} className="text-xs">
+                      All AML (default)
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {availableDormidasMunis.map(m => (
+                      <DropdownMenuRadioItem key={m} value={m} className="text-xs">
+                        {m}
                       </DropdownMenuRadioItem>
-                      <DropdownMenuSeparator />
-                      {availableDormidasMunis.map(m => (
-                        <DropdownMenuRadioItem key={m} value={m} className="text-xs">
-                          {m}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
 
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
-                Display
-              </span>
-              <div className="inline-flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/30 p-1">
-                <button
-                  onClick={() => setMode('indexed')}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
-                    effectiveMode === 'indexed'
-                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  Indexed
-                </button>
-                <button
-                  onClick={() => !bothOn && setMode('raw')}
-                  disabled={bothOn}
-                  title={bothOn ? 'Raw mode is unavailable when comparing both signals' : undefined}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
-                    effectiveMode === 'raw'
-                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                      : 'text-muted-foreground hover:text-foreground',
-                    bothOn && 'cursor-not-allowed opacity-40',
-                  )}
-                >
-                  Raw
-                </button>
-              </div>
+          {/* View toggle pinned right */}
+          <div className="ml-auto flex items-center gap-2">
+            <ToolbarLabel>View</ToolbarLabel>
+            <div className="inline-flex items-center gap-0.5 rounded-full border border-border/50 bg-muted/30 p-1">
+              <button
+                onClick={() => setMode('indexed')}
+                className={cn(
+                  'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                  effectiveMode === 'indexed'
+                    ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Indexed
+              </button>
+              <button
+                onClick={() => !bothOn && setMode('raw')}
+                disabled={bothOn}
+                title={bothOn ? 'Raw mode is unavailable when comparing both signals' : undefined}
+                className={cn(
+                  'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                  effectiveMode === 'raw'
+                    ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                    : 'text-muted-foreground hover:text-foreground',
+                  bothOn && 'cursor-not-allowed opacity-40',
+                )}
+              >
+                Raw
+              </button>
             </div>
           </div>
         </CardContent>
@@ -430,11 +451,12 @@ export function Signals() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
-          label={`Price change (${firstMonth ?? '—'} → ${lastMonth ?? '—'})`}
+          label="Price change"
           icon={TrendingUp}
           color={PRICE_COLOR}
           value={`${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(1)}%`}
           tone={priceChange >= 0 ? 'pos' : 'neg'}
+          range={priceFirstMonth && priceLastMonth ? `${priceFirstMonth} → ${priceLastMonth}` : null}
         />
         {trendsOn && (
           <KpiCard
@@ -443,6 +465,7 @@ export function Signals() {
             color={TRENDS_COLOR}
             value={`${trendsChange >= 0 ? '+' : ''}${trendsChange.toFixed(1)}%`}
             tone={trendsChange >= 0 ? 'pos' : 'neg'}
+            range={trendsFirstMonth && trendsLastMonth ? `${trendsFirstMonth} → ${trendsLastMonth}` : null}
           />
         )}
         {dormidasOn && (
@@ -452,6 +475,7 @@ export function Signals() {
             color={DORMIDAS_COLOR}
             value={`${dormidasChange >= 0 ? '+' : ''}${dormidasChange.toFixed(1)}%`}
             tone={dormidasChange >= 0 ? 'pos' : 'neg'}
+            range={dormidasFirstMonth && dormidasLastMonth ? `${dormidasFirstMonth} → ${dormidasLastMonth}` : null}
           />
         )}
         <Card className="col-span-2 lg:col-span-1">
@@ -484,7 +508,7 @@ export function Signals() {
           </CardTitle>
           <CardDescription>
             {effectiveMode === 'indexed'
-              ? `All series rebased to 100 at ${firstMonth ?? '—'} so relative growth is directly comparable.`
+              ? `Each line rebased to 100 at its own first observation${windowFirst && windowLast ? ` · window ${windowFirst} → ${windowLast}` : ''}.`
               : trendsOn
                 ? '€/m² on the left axis · Google Trends score (0–100 baseline) on the right.'
                 : '€/m² on the left axis · monthly overnights on the right.'}
@@ -634,7 +658,7 @@ export function Signals() {
               <> Overnights: INE monthly figures
                 {dormidasMuni === ALL_AML_OPTION ? ' for the AML aggregate.' : ` for ${dormidasMuni}.`}</>
             )}
-            {bothOn && ' Indexed view rebases each line to 100 at the first shared month.'}
+            {effectiveMode === 'indexed' && ' Indexed view rebases each line to 100 at its own first observation, so series with different start dates remain directly comparable.'}
           </p>
         </CardContent>
       </Card>
@@ -643,6 +667,18 @@ export function Signals() {
 }
 
 // ── Small presentational helpers ──────────────────────────────────────────────
+
+function ToolbarLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/60">
+      {children}
+    </span>
+  );
+}
+
+function ToolbarDivider() {
+  return <span aria-hidden className="hidden h-5 w-px bg-border/60 lg:block" />;
+}
 
 function SignalChip({
   label, icon: Icon, color, active, onClick,
@@ -656,12 +692,14 @@ function SignalChip({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        'group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all',
+        'group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition-all',
         active
           ? 'border-transparent bg-foreground/[0.06] text-foreground shadow-sm ring-1 ring-border/60'
           : 'border-border/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
+      style={active ? { boxShadow: `inset 0 0 0 1px ${color}30` } : undefined}
     >
       <span
         className="h-1.5 w-1.5 rounded-full transition-opacity"
@@ -674,13 +712,14 @@ function SignalChip({
 }
 
 function KpiCard({
-  label, icon: Icon, color, value, tone,
+  label, icon: Icon, color, value, tone, range,
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   color: string;
   value: string;
   tone: 'pos' | 'neg' | 'neutral';
+  range?: string | null;
 }) {
   return (
     <Card>
@@ -698,6 +737,11 @@ function KpiCard({
         >
           {value}
         </div>
+        {range && (
+          <div className="mt-0.5 text-[10px] text-muted-foreground/80 tabular-nums">
+            {range}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

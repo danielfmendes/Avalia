@@ -1,5 +1,6 @@
 import { useDashboard } from '@/context/DashboardContext';
 import { ModeToggle } from '@/components/mode-toggle';
+import { useTheme } from "@/components/theme-provider";
 import {
   BarChart3, Sparkles, GitCompareArrows, BedDouble, Wallet, History, Activity,
 } from 'lucide-react';
@@ -7,16 +8,24 @@ import type { Page } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 function Logo() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/25">
-        <span className="font-black text-white text-base tracking-tighter leading-none">A</span>
-        <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20" />
-        <span className="absolute -inset-[1px] rounded-xl bg-gradient-to-br from-white/10 to-transparent opacity-50" />
-      </div>
-      <span className="text-[17px] font-bold tracking-tight leading-none">Avalia</span>
-    </div>
-  );
+    const { theme } = useTheme();
+
+    const logoSrc = theme === 'dark'
+        ? "/avalia_logo_icon_darkmode.png"
+        : "/avalia_logo_icon.png";
+
+    return (
+        <div className="flex items-center gap-2.5">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl">
+                <img
+                    src={logoSrc}
+                    alt="Avalia Logo Icon"
+                    className="h-full w-full object-contain"
+                />
+            </div>
+            <span className="text-[17px] font-bold tracking-tight leading-none">Avalia</span>
+        </div>
+    );
 }
 
 interface NavItem {
