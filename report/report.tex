@@ -23,6 +23,12 @@
 \definecolor{linkcol}{HTML}{1F3A5F}
 \definecolor{boxfr}{gray}{0.45}
 \definecolor{muted}{gray}{0.45}
+% Architecture-diagram tier palette (muted, professional)
+\definecolor{srcCol}{HTML}{4A6FA5}   % sources    (slate blue)
+\definecolor{etlCol}{HTML}{6E4A8F}   % transform  (muted violet)
+\definecolor{dbCol}{HTML}{3F7A4D}    % store      (sage green)
+\definecolor{apiCol}{HTML}{8A6A2E}   % serve      (warm amber)
+\definecolor{feCol}{HTML}{2D4670}    % present    (deep navy)
 
 % ---------- Section spacing (default LaTeX styling otherwise) ----------
 \usepackage{titlesec}
@@ -35,6 +41,7 @@
 \setlist{itemsep=3pt,topsep=4pt,parsep=0pt,leftmargin=1.6em}
 \usepackage{booktabs,array,tabularx}
 \usepackage[most]{tcolorbox}
+\usepackage{graphicx}
 \usepackage{float}    % provides the [H] specifier to lock floats in place
 \usepackage{caption}
 \captionsetup{font=small,skip=4pt}
@@ -48,7 +55,7 @@
 
 % ---------- TikZ ----------
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,calc}
+\usetikzlibrary{positioning,arrows.meta,calc,shapes.symbols,shapes.geometric,backgrounds,shadows.blur}
 
 % ---------- Bibliography ----------
 \usepackage[
@@ -72,67 +79,6 @@
 
 \begin{document}
 
-% =============================================================================
-% BEGIN GREGOR SECTION  — delete everything between BEGIN and END markers
-% before submission.  The rest of the report is self-contained.
-% =============================================================================
-\thispagestyle{empty}
-\vspace*{1.4cm}
-\begin{center}
-{\Large\bfseries Organization for Gregor}\\[3pt]
-{\itshape\small Navigation aid only. Remove before submission.}
-\end{center}
-\vspace{10pt}
-
-\begin{tcolorbox}[
-  colback=white,colframe=boxfr,boxrule=0.4pt,arc=1pt,
-  boxsep=6pt,left=12pt,right=12pt,top=10pt,bottom=10pt
-]
-\noindent Each rubric sub-point links to the section in the body that addresses it. Internal links are clickable in the PDF.
-
-\medskip
-\textbf{1.\ Relevance}
-\begin{enumerate}
-  \item \hyperref[sec:intro]{One-sentence pitch and why it qualifies as a Big Data project.}
-  \item \hyperref[sec:intro]{Beneficiaries and business case.}
-  \item \hyperref[sec:roadmap]{Monetisation and sustainability.}
-\end{enumerate}
-
-\textbf{2.\ Innovation}
-\begin{enumerate}
-  \item \hyperref[sec:differentiation]{Differentiation versus existing portals.}
-  \item \hyperref[sec:forecast]{How AI and other tools were applied.}
-  \item \hyperref[sec:roadmap]{Next steps to become a real business.}
-\end{enumerate}
-
-\textbf{3.\ Maturity}
-\begin{enumerate}
-  \item \hyperref[sec:system]{Functional prototype.}
-  \item \hyperref[sec:system]{Reproducibility and access.}
-  \item \hyperref[sec:limits]{Known issues.}
-\end{enumerate}
-
-\textbf{4.\ Presentation.}\ \ Slides and live demo, 20 May pitch. Out of scope for this written report.
-
-\medskip
-\noindent\textbf{Cross-cutting topics requested:}
-\begin{itemize}
-  \item \hyperref[sec:limits]{Cloudflare D1 100\,000-writes/day cap and why it forced Lisbon-only scope.}
-  \item \hyperref[sec:data]{Full data-source list (habitacao.net, arquivo.pt, Google Trends, PORDATA, INE).}
-  \item \hyperref[sec:system]{What the frontend does (seven pages and a Lisbon map).}
-  \item \hyperref[sec:forecast]{How the forecast is computed.}
-  \item \hyperref[sec:fivevs]{The 5\,Vs of Big Data, current state, scaled vision, growth estimates.}
-\end{itemize}
-
-\medskip
-\noindent\textit{To remove: delete everything between\,\texttt{\% BEGIN GREGOR SECTION}\,and\,\texttt{\% END GREGOR SECTION} in \texttt{report.tex} and rerun \texttt{./build.sh}.}
-\end{tcolorbox}
-
-\newpage
-% =============================================================================
-% END GREGOR SECTION
-% =============================================================================
-
 % ---------- Title block ----------
 \begin{center}
 {\LARGE\bfseries Avalia: A Big Data Lens on the\\[2pt] Lisbon Real-Estate Market}\\[10pt]
@@ -148,7 +94,7 @@ Avalia turns twelve years of Portuguese property listings, plus tourism, search,
 % ---------- 1. Introduction ----------
 \section{Introduction}\label{sec:intro}
 
-Portuguese property portals (Idealista, Imovirtual, Casa Sapo) only show \emph{current} listings. No public record tracks how prices evolved per parish (\emph{freguesia}) over the last decade, and none of those portals surfaces the macro-economic and behavioural signals that move the market.
+Idealista, Imovirtual, and Casa Sapo only show \emph{current} listings; none surfaces parish-level (\emph{freguesia}) price history or the macro-economic and behavioural signals that move the market.
 
 \textbf{User stories.}
 \begin{itemize}
@@ -157,58 +103,134 @@ Portuguese property portals (Idealista, Imovirtual, Casa Sapo) only show \emph{c
   \item As a \emph{municipal planner}, I want housing-pressure indicators correlated with tourism and search, to target interventions.
 \end{itemize}
 
-\textbf{Why this is a Big Data project.} The base dataset is 2.6\,GB of raw listings ($\sim$3\,million transactions) drawn from the Portuguese web archive \emph{arquivo.pt} via the open-data project \emph{habitacao.net}. Two further sources, Google Trends and PORDATA, join it at weekly to annual cadences (Section~\ref{sec:data}). Volume, Variety, and Veracity are present from day one. Velocity and full Value are out of scope for the prototype and analysed in Section~\ref{sec:fivevs}.
+\textbf{Why this is a Big Data project.} The base dataset is 2.6\,GB of raw listings ($\sim$3\,M transactions) from \emph{arquivo.pt} via the open-data project \emph{habitacao.net}, joined with Google Trends and PORDATA at weekly-to-annual cadences (Section~\ref{sec:data}). Volume, Variety, and Veracity are present from day one; Velocity and full Value are analysed in Section~\ref{sec:fivevs}.
 
 % ---------- 2. System ----------
 \section{System architecture and reproducibility}\label{sec:system}
 
-Seven pages, filterable by sale type and room count, share a D3-Geo Lisbon map that drills district~$\to$~municipality~$\to$~parish:
+Seven pages share a D3-Geo Lisbon map that drills district~$\to$~municipality~$\to$~parish, filterable by sale type and room count:
 \begin{itemize}
-  \item \emph{Market Overview}: district prices, KPI cards, drill-down map.
-  \item \emph{AI Predictions}: 12-month forecast per region with uncertainty bands.
+  \item \emph{Market Overview}: district prices, KPIs, drill-down map.
+  \item \emph{AI Predictions}: 12-month per-region forecast with uncertainty bands.
   \item \emph{Signals}: price overlaid on Google Trends, \emph{dormidas}, earnings, construction.
-  \item \emph{Compare}: side-by-side comparison of up to six municipalities or parishes.
-  \item \emph{Rooms}: T0--T4+ bedroom-type analysis with per-room trends.
-  \item \emph{Affordability}: budget slider that ranks parishes within reach.
-  \item \emph{Time Machine}: monthly scrubber back to 2012, with gainers and losers.
+  \item \emph{Compare}: side-by-side, up to six regions.
+  \item \emph{Rooms}: T0--T4+ trends per typology.
+  \item \emph{Affordability}: budget slider ranking parishes in reach.
+  \item \emph{Time Machine}: monthly scrubber back to 2012.
 \end{itemize}
+
+\IfFileExists{dashboard_overview.png}{%
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{dashboard_overview.png}
+\caption{\emph{Market Overview} page of the live dashboard: district choropleth, KPI cards, and price trend, with drill-down to municipality and parish.}
+\label{fig:dashboard}
+\end{figure}
+}{} % drop dashboard_overview.png into report/ to enable this figure
+
+% Inline icon helpers, used inside the tier nodes below.
+\newcommand{\iconTransform}[1]{%
+  \tikz[baseline=-0.6ex]{
+    \draw[#1, line width=0.45pt] (-1.6mm, 1.1mm) -- (1.6mm, 1.1mm);
+    \draw[#1, line width=0.45pt] (-1.6mm, -0.2mm) -- (1.6mm, -0.2mm);
+    \draw[#1, line width=0.45pt, ->, >={Stealth[length=1mm]}]
+      (-1.4mm, -1.5mm) -- (1.4mm, -1.5mm);
+  }}
+\newcommand{\iconStore}[1]{%
+  \tikz[baseline=-0.6ex]{
+    \node[draw=#1, line width=0.45pt, fill=#1!15,
+          cylinder, shape border rotate=90, aspect=0.32,
+          minimum width=3.6mm, minimum height=4.4mm, inner sep=0pt] {};
+  }}
+\newcommand{\iconServe}[1]{%
+  \tikz[baseline=-0.6ex]{
+    \node[draw=#1, line width=0.45pt, fill=#1!15,
+          cloud, cloud puffs=8, cloud puff arc=120,
+          minimum width=5.4mm, minimum height=3.6mm, inner sep=0pt] {};
+  }}
+\newcommand{\iconPresent}[1]{%
+  \tikz[baseline=-0.6ex]{
+    \draw[#1, line width=0.45pt, fill=#1!15, rounded corners=0.3pt]
+      (-1.9mm, -1.5mm) rectangle (1.9mm, 1.5mm);
+    \draw[#1, line width=0.4pt] (-1.9mm, 0.6mm) -- (1.9mm, 0.6mm);
+    \fill[#1] (-1.3mm, 1.05mm) circle (0.22mm);
+    \fill[#1] (-0.55mm, 1.05mm) circle (0.22mm);
+  }}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
   font=\footnotesize,
-  src/.style  ={draw,rounded corners=2pt,minimum width=3.2cm,minimum height=10mm,align=center,fill=white},
-  layer/.style={draw,rounded corners=3pt,minimum width=11.5cm,minimum height=9mm,align=center,fill=black!3,font=\small},
-  arrow/.style={-{Stealth[length=2mm]},semithick,black!70}
+  >={Stealth[length=2.2mm]},
+  % data-source chip (top row)
+  src/.style={
+    draw=srcCol, line width=0.5pt, fill=srcCol!8,
+    rounded corners=2.5pt,
+    minimum width=3.5cm, minimum height=11mm,
+    align=center, inner sep=3pt
+  },
+  % single-row tier (inline icon + label + content all inside)
+  tier/.style={
+    draw=#1, line width=0.5pt, fill=#1!7,
+    rounded corners=3pt,
+    minimum width=13cm, minimum height=11mm,
+    inner xsep=10pt, inner ysep=4pt,
+    text width=12.4cm, align=left
+  },
+  arrow/.style={->, semithick, black!55},
+  thinarrow/.style={->, line width=0.4pt, black!55}
 ]
-% Three source boxes, evenly spaced and centred under the layer column (centre x = 5.65)
-\node[src] (s1) at (1.7 ,0) {arquivo.pt /\\habitacao.net};
-\node[src] (s2) at (5.65,0) {Google Trends\\(weekly)};
-\node[src] (s3) at (9.6 ,0) {PORDATA \emph{dormidas}\\(monthly + annual)};
-\node[layer] (etl) at (5.65,-1.5) {Python ETL: pandas, chunked at 200\,k rows};
-\node[layer] (db)  at (5.65,-2.6) {Cloudflare D1 (SQLite edge database)};
-\node[layer] (api) at (5.65,-3.7) {Hono.js Worker: \texttt{/api/search}, \texttt{/api/municipios}, \ldots};
-\node[layer] (fe)  at (5.65,-4.8) {React SPA: Vite, Tailwind, Recharts, D3-Geo};
-\draw[arrow] (s1.south) -- (s1.south |- etl.north);
-\draw[arrow] (s2.south) -- (s2.south |- etl.north);
-\draw[arrow] (s3.south) -- (s3.south |- etl.north);
-\draw[arrow] (etl) -- (db);
-\draw[arrow] (db)  -- (api);
-\draw[arrow] (api) -- (fe);
+
+% ---------- Source row ----------
+\node[src] (s1) at (-4.4, 0)
+  {\textbf{arquivo.pt} / habitacao.net\\\scriptsize\itshape historical listings};
+\node[src] (s2) at ( 0.0, 0)
+  {\textbf{Google Trends}\\\scriptsize\itshape weekly search interest};
+\node[src] (s3) at ( 4.4, 0)
+  {\textbf{PORDATA} \emph{dormidas}\\\scriptsize\itshape monthly + annual};
+
+% ---------- Tier rows (icon + colored label + content, all inline) ----------
+\node[tier=etlCol] (etl) at (0, -2.0) {%
+  \iconTransform{etlCol}\;%
+  {\color{etlCol}\bfseries\scriptsize TRANSFORM}\hspace{10pt}%
+  Python ETL\,\textbf{·}\,pandas\,\textbf{·}\,chunked at 200\,k rows};
+
+\node[tier=dbCol] (db) at (0, -3.3) {%
+  \iconStore{dbCol}\;%
+  {\color{dbCol}\bfseries\scriptsize STORE}\hspace{10pt}%
+  Cloudflare D1\,\textbf{·}\,SQLite at the edge};
+
+\node[tier=apiCol] (api) at (0, -4.6) {%
+  \iconServe{apiCol}\;%
+  {\color{apiCol}\bfseries\scriptsize SERVE}\hspace{10pt}%
+  Hono.js Worker\,\textbf{·}\,\texttt{/api/search}\,\textbf{·}\,\texttt{/api/municipios}\,\textbf{·}\,\ldots};
+
+\node[tier=feCol] (fe) at (0, -5.9) {%
+  \iconPresent{feCol}\;%
+  {\color{feCol}\bfseries\scriptsize PRESENT}\hspace{10pt}%
+  React SPA\,\textbf{·}\,Vite\,\textbf{·}\,Tailwind\,\textbf{·}\,Recharts\,\textbf{·}\,D3-Geo};
+
+% ---------- Arrows ----------
+\draw[thinarrow] (s1.south) -- (s1.south |- etl.north);
+\draw[thinarrow] (s2.south) -- (s2.south |- etl.north);
+\draw[thinarrow] (s3.south) -- (s3.south |- etl.north);
+\draw[arrow] (etl.south) -- (db.north);
+\draw[arrow] (db.south)  -- (api.north);
+\draw[arrow] (api.south) -- (fe.north);
 \end{tikzpicture}
 \caption{Avalia data pipeline. Three heterogeneous sources are normalised by a Python ETL into a single Cloudflare D1 schema, served by a Hono.js Worker, and consumed by a React single-page application with map-based drill-down.}
 \label{fig:arch}
 \end{figure}
 
-Source code, ETL scripts, and the database schema are version-controlled in the GitHub repository, and the live demo is publicly accessible (links in the References).
+The source code, ETL, and schema live in a \textbf{public GitHub repository}; the live demo is publicly accessible (References).
 
 % ---------- 3. Data sources ----------
 \section{Data sources}\label{sec:data}
 
 \begin{itemize}
-  \item \textbf{arquivo.pt and habitacao.net.} \emph{arquivo.pt} is Portugal's web archive, with periodic snapshots of major property portals (Idealista, Imovirtual, Casa Sapo). The open-data project \emph{habitacao.net} mines those snapshots to reconstruct advertised-listings history back to 2012, exposing price, area, room count, and location for each entry.
-  \item \textbf{Google Trends.} Weekly Lisbon housing-keyword search interest, used as a leading indicator. Spikes in queries like ``comprar casa'' tend to precede price moves by one or two months.
-  \item \textbf{PORDATA.} Per-municipality time-series from the Francisco Manuel dos Santos Foundation. We use tourism overnights (\emph{dormidas}, monthly) as a proxy for short-term-rental pressure, plus four annual macro series: foreign workers, tourist capacity, mean monthly earnings, and completed constructions.
+  \item \textbf{arquivo.pt + habitacao.net.} \emph{arquivo.pt} (Portugal's web archive) snapshots Idealista, Imovirtual, and Casa Sapo periodically; \emph{habitacao.net} mines those snapshots to reconstruct listings history back to 2012 with price, area, rooms, and location per entry.
+  \item \textbf{Google Trends.} Weekly Lisbon housing-keyword search interest, a leading indicator: spikes in queries like ``comprar casa'' precede price moves by one to two months.
+  \item \textbf{PORDATA.} Per-municipality series: tourism overnights (\emph{dormidas}, monthly) as a short-term-rental-pressure proxy, plus four annual macro series (foreign workers, tourist capacity, mean earnings, completed constructions).
 \end{itemize}
 
 \renewcommand{\arraystretch}{1.18}
@@ -233,13 +255,13 @@ PORDATA macro              & foreign workers, tourist capacity, mean earnings, c
 % ---------- 4. Forecasting ----------
 \section{Forecasting model}\label{sec:forecast}\label{sec:differentiation}
 
-For each region, the frontend takes the trailing 18 monthly averages of €/m\textsuperscript{2}, fits an ordinary-least-squares line, and projects 12 months ahead. The uncertainty band widens by 1.5\,\% per step. The model runs entirely client-side.
+Per region, the frontend fits OLS to the trailing 18 monthly €/m\textsuperscript{2} averages and projects 12 months ahead client-side, with the uncertainty band widening 1.5\,\% per step.
 
 \textbf{What is different.} Where Idealista shows the present, Avalia shows \emph{history} (\emph{Time Machine} scrubs back to 2012) and \emph{future} (12-month projections), and overlays exogenous signals on price curves so users \emph{see} what moves the market.
 
-\textbf{AI in the build.} Code generation throughout was AI-assisted (Claude Code), with the prompt log committed to the repository.
+\textbf{AI in the build.} Code generation was AI-assisted (Claude Code); a representative prompt log is in Appendix~\ref{app:prompts}.
 
-\textbf{Planned forecast upgrade.} The current model only extrapolates each region's own past prices, so it captures inertia but misses turning points. The next version adds Google Trends, tourism overnights, and the PORDATA macro series as predictors and fits them jointly against price, so the forecast reflects live demand and macro context, sharpening accuracy when the market accelerates or cools.
+\textbf{Planned upgrade.} The current model extrapolates each region's own past prices and misses turning points; the next version adds Google Trends, \emph{dormidas}, and the PORDATA macro series as exogenous predictors so the forecast reflects live demand and macro context.
 
 % ---------- 5. Five Vs ----------
 \section{The 5\,Vs of Big Data: today and at scale}\label{sec:fivevs}
@@ -251,9 +273,9 @@ For each region, the frontend takes the trailing 18 monthly averages of €/m\te
 \toprule
 \textbf{V} & \textbf{Today (Lisbon prototype)} & \textbf{At scale (national + live)} \\
 \midrule
-Volume   & 2.6\,GB raw, aggregated to 65\,k rows over the Lisbon AML          & $\sim$10\,GB raw, $\sim$250\,k aggregated, live ingestion adds 0.5--1\,M rows/yr \\
-Velocity & Batch reload only                                                  & A managed streaming ingestion pipeline pulling 500--1\,000 listings/day, with hourly aggregate refresh \\
-Variety  & Four external sources (search, tourism, demographics, construction) plus core listings & + transit/walkability, school ratings, mortgage rates, weather, EU energy certificates \\
+Volume   & 2.6\,GB raw, aggregated to 65\,k rows (Lisbon AML)                & $\sim$10\,GB raw, $\sim$250\,k aggregated, +0.5--1\,M rows/yr live \\
+Velocity & Batch reload only                                                  & Weekly \emph{Idealista} snapshot, re-aggregated same day \\
+Variety  & Four external sources plus core listings                           & + transit, school ratings, mortgage rates, weather, EU energy certificates \\
 Veracity & Weighted means, chunked dedup, type coercion                       & Cross-portal reconciliation, anomaly detection, listing-survival modelling \\
 Value    & Yield calculator, affordability heatmap, signal overlay            & Personalised recommendations, probabilistic forecasts, municipal-pressure index \\
 \bottomrule
@@ -262,20 +284,78 @@ Value    & Yield calculator, affordability heatmap, signal overlay            & 
 \label{tab:fivevs}
 \end{table}
 
-\textbf{Growth estimate.} Portuguese real-estate transactions run at $\sim$150--200\,k purchases per year nationally. Combining the historical \emph{arquivo.pt} extract with continuous portal scraping pushes the corpus from today's 65\,k rows to roughly \textbf{1.5\,M after three years}, which a higher tier of the same managed database absorbs without changing the architecture. Every gap in Table~\ref{tab:fivevs} is bridged by a known technology, not new research.
+\textbf{Growth estimate.} Portuguese real-estate transactions run at $\sim$150--200\,k purchases per year. The forward plan is a \textbf{weekly \emph{Idealista} snapshot}: every seven days the scraper pulls active listings per enabled region and the ETL re-aggregates them into the existing schema. Sizing from Lisbon's observed density (4.1 rows per parish per month, 88:1 raw\,$\to$\,aggregated compression) and applying it across the other regions' parish counts (rural parishes are far sparser), the corpus grows from 65\,k rows today to roughly \textbf{0.45\,M after three years} and $\sim$0.6\,M by 2030 -- an order-of-magnitude expansion at constant Cloudflare D1 cost. Every gap in Table~\ref{tab:fivevs} is bridged by a known technology. Figure~\ref{fig:growth} traces the trajectory; dashed lines mark regional rollouts.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{data_growth/data_growth.pdf}
+\caption{Cumulative aggregated rows stored, by region. The 14-year \emph{arquivo.pt} extraction is compressed into the left-pointing annotation under the x-axis (65\,k rows already loaded today); from May 2026 onward the forecast assumes a weekly \emph{Idealista} snapshot per enabled region, aggregated into the existing schema. Per-region monthly row-rates derive from Lisbon's observed density of 4.1 rows per parish per month (measured from \texttt{summary\_lisboa\_final.csv}), multiplied by each region's parish count and boosted for weekly cadence; backfills on rollout use the same 88:1 raw\,$\to$\,aggregated compression. All constants are documented at the top of \texttt{report/data\_growth/data\_growth.py}.}
+\label{fig:growth}
+\end{figure}
 
 % ---------- 6. Discussion ----------
 \section{Discussion and conclusion}\label{sec:roadmap}
 
 \subsection{Monetisation and roadmap}
 
-Three revenue lines are plausible: a freemium consumer tier with a paid \emph{investor} mode, a B2B API for banks and agencies, and anonymised market reports for municipalities. Next steps: ingest the full national \emph{arquivo.pt} corpus, add daily scraping of live portals, and productionise the multivariate forecasting pipeline described in Section~\ref{sec:forecast}.
+Three revenue lines are plausible: a freemium consumer tier with a paid \emph{investor} mode, a B2B API for banks and agencies, and anonymised market reports for municipalities. Next business steps: a paid validation pilot with one B2B partner (a small agency or appraisal firm) to test API willingness-to-pay, tiered usage-based pricing, and a GDPR / data-licensing review before any municipal contract.
 
 \subsection{Limitations}\label{sec:limits}
 
-Cloudflare D1's free tier caps writes at \textbf{100\,000 rows per day} \parencite{cloudflareD1}, which is why we scoped the prototype to the eighteen Lisbon Metropolitan Area municipalities. Aggregating to month\,$\times$\,parish\,$\times$\,type\,$\times$\,rooms compresses $\sim$3\,M rows to $\sim$65\,k for Lisbon, inside the cap. The forecasting model does not yet use the available exogenous regressors, and refresh is manual.
+Cloudflare D1's free tier caps writes at \textbf{100\,000 rows per day} \parencite{cloudflareD1}, which is why the prototype is scoped to the eighteen Lisbon AML municipalities; aggregation compresses $\sim$3\,M raw rows to $\sim$65\,k, inside the cap. The forecast does not yet use the exogenous regressors, and refresh is manual.
 
 % ---------- References ----------
 \printbibliography[title={References}]
+
+% ---------- Appendix: AI prompt log ----------
+\appendix
+\section{AI prompt log}\label{app:prompts}
+
+A curated, not verbatim, set of prompts that could reconstruct the project's current shape today, grouped by functional area and followed by a data-side problem we hit and the prompt that fixed it.
+
+\newcommand{\prompt}[1]{%
+\begin{tcolorbox}[
+  colback=black!3,colframe=boxfr,boxrule=0.3pt,arc=1pt,
+  boxsep=4pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  fontupper=\small\ttfamily
+]
+#1
+\end{tcolorbox}}
+
+\subsection{Data pipeline (Python ETL)}
+
+The pipeline is an offline, run-on-demand step that converts a single curated CSV into the SQL inserts that are then pushed to D1.
+
+\prompt{Write a small Python script that reads csv/summary\_lisboa\_final.csv and emits batched INSERT INTO habitacao (...) statements into ../backend/sql/Insert\_Queries.sql. The CSV columns map 1:1 to the table columns: mes\_ano, tipo\_venda, tipo\_habitacao, quartos, distrito, municipio, freguesia, total\_rows, avg\_area, avg\_preco, avg\_m2. Group rows into batches of 100 to avoid SQLITE\_TOOBIG when loading into Cloudflare D1. Escape single quotes by doubling them, leave numeric values unquoted, wrap text in single quotes.}
+
+\subsection{Database schema (Cloudflare D1)}
+
+A single pre-aggregated table is enough, because aggregation has already been done in the ETL step.
+
+\prompt{Design a Cloudflare D1 schema for aggregated Portuguese housing listings. One table called habitacao, columns: mes\_ano (TEXT, "YYYY-MM"), tipo\_venda, tipo\_habitacao, quartos (TEXT, numeric string like "0.0"), distrito, municipio, freguesia, total\_rows (INTEGER, used as a weight when re-aggregating), avg\_area, avg\_preco, avg\_m2 (REAL). Add a composite index on (mes\_ano, municipio, freguesia) for the typical filter combination. Drop and recreate the table on each load so the script is idempotent.}
+
+\subsection{Public API (Hono Worker on Cloudflare)}
+
+\prompt{Build a Hono Worker for Cloudflare that exposes four GET endpoints backed by a D1 binding called DB: /api/search (main query), /api/municipios (distinct municipalities), /api/freguesias (parishes for a given municipio), /api/health. /api/search accepts level=district|municipality|parish plus municipio, freguesia, tipo\_venda, quartos (T0..T4+, where T4+ means quartos >= 4), min\_area, max\_area. The database stores quartos as a numeric string ("0.0","1.0",...), so normalise to T0..T4+ on the way out. Return JSON \{success, level, count, data\}. CORS allowlist: env.ALLOWED\_ORIGIN, http://localhost:5173, http://127.0.0.1:3000.}
+
+\subsection{Frontend dashboard (React + Tailwind + ShadcnUI)}
+
+Two prompts: the first lays out the seven-page skeleton, the second produces the Lisbon choropleth that ties the dashboard together.
+
+\prompt{Scaffold a Vite + React 19 + TypeScript + Tailwind v4 + ShadcnUI single-page application with seven lazy-loaded routes: Market Overview, AI Predictions, Signals, Compare, Rooms, Affordability, Time Machine. Add a top navigation bar that switches between them and a dark/light toggle. Share filter state (sale type, room typology, area range, drill-down selection) through a single DashboardContext provider that wraps the routed view. Use Recharts for charts and the project alias @/ for src imports.}
+
+\prompt{Write a React component LisbonMap that renders the 18 Lisbon Metropolitan Area municipalities as a D3-Geo SVG choropleth. Fit a Mercator projection to the loaded GeoJSON feature collection, fill each region by interpolating a 5-stop green-yellow-red colour ramp over a price metric (EUR/m\textasciicircum 2), show a hover tooltip with parish name, EUR/m\textasciicircum 2, year-on-year change, and listing count, and on click update the drill-down state so the map re-renders showing only that municipality's parishes. Read the active metric and current selection from the dashboard context.}
+
+\subsection{Problem encountered: Lisboa-level aggregation}
+
+Early in the build the district-level view showed zero rows for Lisbon city. Inspecting the data, Lisboa turned out to be the only municipality whose pre-aggregated ``Grouped at Municipio level'' marker rows are absent from the source dataset; every other municipality has them, but for Lisboa only the underlying parish rows exist. A naive \texttt{WHERE freguesia = 'Grouped at Municipio level'} therefore filters Lisboa out entirely, leaving a blank tile on the district map. The fix synthesises Lisboa's municipality row on the fly at query time, weighted by \texttt{total\_rows}. Cloudflare D1, which is SQLite-based and runs at the edge, does not handle correlated subqueries reliably for this shape, so the implementation uses \texttt{UNION ALL}. The resulting branch lives in \texttt{api/src/index.ts} under the \texttt{level=district} path.
+
+\prompt{In our D1-backed Hono Worker, GET /api/search?level=district returns no rows for Lisbon city. Every other municipality has 'Grouped at Municipio level' rows in the habitacao table, but Lisboa has only parish rows. Rewrite the SQL so the district response includes Lisboa, computed on the fly as a weighted aggregate of its parish rows: averages are SUM(metric * total\_rows) / SUM(total\_rows), and total\_rows itself is summed. D1's correlated-subquery support is unreliable, so combine the existing district rows with the synthesised Lisboa row using UNION ALL. Group the synthesised side by mes\_ano, tipo\_venda, tipo\_habitacao, quartos, distrito, municipio. Order the final result by mes\_ano ASC.}
+
+\subsection{Secondary problem: parish-name mismatch on the Lisbon map}
+
+A related, smaller area-level issue: the choropleth had blank parishes for many of Lisboa's \emph{freguesias}. The raw GeoJSON used parish names in slightly different casing, diacritics, and hyphen-versus-space conventions than the \texttt{freguesia} strings coming back from \texttt{/api/search} (for example \emph{Avenidas Novas} versus \emph{Avenidas-Novas}). The fix was to simplify the GeoJSON and route every name through a single normaliser before comparison.
+
+\prompt{In LisbonMap.tsx the choropleth fill is empty for several parishes because the names in lisbon-parishes.json don't exactly match the freguesia strings returned by /api/search. Both sources use Portuguese with diacritics and inconsistent hyphen-vs-space conventions. Write a normalizeName helper that lowercases the input, strips diacritics, and replaces every run of non-alphanumeric characters with a single hyphen; then key the fill lookup by the normalised name on both sides so the map and the API agree.}
 
 \end{document}
